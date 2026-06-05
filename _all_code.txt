@@ -1,0 +1,506 @@
+actions
+    api_calls
+    manipulation
+    robotics
+    digital_actions		
+    notifications		
+    speech
+    locomotion		
+    README.md
+    tools
+        calendar
+            calendar.py	
+                import uuid from actions.tools.calendar.event_model import Event   class CalendarTool:      name = "calendar"      schema = {         "create_event": {             "title": "string",             "content": "string",             "category": "string",         }     }      def __init__(self):         self.events = []       def create_event(self, title, start, end):         event = Event(             id=str(uuid.uuid4()),             title=title,             start=start,             end=end,         )          self.events.append(event)          return event               def list_events(self):         return self.events           def update_event(self, event_id, **updates):         for event in self.events:             if event.id == event_id:                 for k, v in updates.items():                     if hasattr(event, k):                         setattr(event, k, v)                  return event           def delete_event(self, event_id):         self.events = [             e for e in self.events             if e.id != event_id         ]          return True
+            event_model.py
+                from pydantic import BaseModel from datetime import datetime   class Event(BaseModel):      id: str      title: str      start: datetime     end: datetime
+        email
+            draft_model.py
+                from pydantic import BaseModel   class Draft(BaseModel):      recipient: str     subject: str     body: str
+            email.py
+                from actions.capabilities.tools.email.draft_model import Draft  class EmailTool:          name = "email"       def __init__(self):         self.drafts = []       def send_email(self):         return NotImplementedError("Connect email provider later")       def draft_email(self, recipient, subject, body):         email = Draft(             recipient=recipient,             subject=subject,             body=body,         )                  self.drafts.append(email)                  return email       def read_email(self):         return []
+            gmail_adapter.py
+            outlook_adapter.py
+        filesystem
+            filesystem.py
+                from pathlib import Path  ROOT = Path("/Volumes/NO NAME/GIDEON/v1.0.0").resolve()  # ------------ HELPERS ------------ def validate_path(path: Path):     path = path.resolve()      if ROOT not in path.parents and path != ROOT:         raise PermissionError("Outside Sandbox")          return path   def build_filename(project: str, discipline: str, doc_type: str, title: str, revision: str = "RevA", ext: str = "md"):     safe_title = title.replace(" ", "_")      return (f"{project}-{discipline}-{doc_type}-{safe_title}-{revision}.{ext}")   def project_path(project, discipline, doc_type):     return (ROOT / "Projects" / project / discipline / doc_type)   # ------------- CORE -------------- class FileSystemTool:      name = "filesystem"      async def save_document(self, project, discipline, doc_type, title, content, revision="RevA", ext="md"):         filename = build_filename(project, discipline, doc_type, title, revision, ext)         folder = (ROOT / "Projects" / project / discipline / doc_type)          folder.mkdir(parents=True, exist_ok=True)          file = folder / filename          file.write_text(content)          return str(file)           async def read_file(self, path: str):         file = validate_path(path)          return Path(file).read_text()       async def write_file(self, path: str, content: str):         file = validate_path(path)          file.parent.mkdir(parents=True, exist_ok=True)          file.write_text(content)                  return {"status": "success"}           async def list_directory(self, path="."):         folder = validate_path(path)          return [x.name for x in folder.iterdir()]           async def exists(self, path: str):         return validate_path(path).exists()           async def delete_file(self, path: str):         validate_path(path).unlink()          return {"status": "deleted"}
+        notes
+            notes.py
+                from pathlib import Path from datetime import datetime  ROOT = Path("/Volumes/NO NAME/GIDEON/v1.0.0/Notes").resolve()  class NotesTool:      name = "notes"      async def create_note(self, title: str, content: str, category: str = "Capture"):         # categories: capture, build log, knowledge note, experiment, decision log, project          folder = ROOT / category          folder.mkdir(parents=True, exist_ok=True)         date_str = datetime.now().strftime("%Y-%m-%d")          filename = f"{date_str}_{title}.md"          path = folder / filename          path.write_text(content)          return str(path)          async def read_note(self, category: str, title: str):         path = ROOT / category / f"{title}.md"          return path.read_text()      async def search_notes(self, query: str):         results = []          for file in ROOT.rglob("*.md"):             text = file.read_text()              if query.lower() in text.lower():                 results.append(str(file))          return results
+        reminders
+            reminders.py
+                import uuid from datetime import datetime  from actions.capabilities.tools.reminders.reminder_model import Reminder   class ReminderTool:      name = "reminders"      def __init__(self):         self.reminders = []      def create_reminder(self, title, message, due_at):         reminder = Reminder(             id=str(uuid.uuid4()),             title=title,             message=message,             due_at=due_at,             completed=False,         )          self.reminders.append(reminder)          return reminder      def list_reminders(self):         return self.reminders          def delete_reminder(self, reminder_id):         self.reminders = [             r for r in self.reminders             if r.id != reminder_id         ]          return True
+            reminder_model.py
+                from pydantic import BaseModel from datetime import datetime   class Reminder(BaseModel):          id: str          title: str     message: str      due_at: datetime     completed: bool = False
+            reminder_table.sql
+                CREATE TABLE reminders (     id UUID PRIMARY KEY,     title TEXT,     message TEXT,     due_at TIMESTAMP,     completed BOOLEAN );
+        system_monitor
+            system_monitor.py
+                import psutil  class SystemMonitorTool:          name = "system_monitor"          def get_cpu_usage(self):         return psutil.cpu_percent()           def get_ram_usage(self):         return psutil.virtual_memory().percent           def get_disk_usage(self):         return psutil.disk_usage("/").percent           def get_battery(self):         battery = psutil.sensors_battery()         if not battery:             return None                  return {             "percent": battery.percent,             "charging": battery.power_plugged,         }               def get_network(self):         net = psutil.net_io_counters()          return {             "sent": net.bytes_sent,             "received": net.bytes_recv,         }           def full_status(self):         return {             "cpu": self.get_cpu_usage(),             "memory": self.get_ram_usage(),             "disk": self.get_disk_usage(),             "battery": self.get_battery(),             "network": self.get_network(),         }
+        timers
+            timers.py
+                import time import threading import uuid   class TimerTool:      name = "timer"      def __init__(self):         self.timers = {}       def start_timer(self, seconds):         timer_id = str(uuid.uuid4())          timer = threading.Timer(seconds, lambda: print(f"Timer {timer_id} complete"))         timer.start()          self.timers[timer_id] = timer          return timer_id           def cancel_timer(self, timer_id):         if timer_id in self.timers:             self.timers[timer_id].cancel()              return True                  return False                
+        tool_applications
+        tool_models
+            tool_call.py
+                from pydantic import BaseModel   class ToolCall(BaseModel):          name: str     args: dict
+            tool_definition.py
+                from pydantic import BaseModel from typing import Callable   class ToolDefinition:      def __init__(self, function: Callable, request_model: type[BaseModel], description: str):         self.func = function         self.request_model = request_model         self.desc = description       def model_to_openai_schema(self, model: type[BaseModel]):         schema = model.model_json_schema()          return {             "type": "function",             "function": {                 "name": model.__name__,                 "description": "",                 "parameters": schema,             }         }      def build_openai_tool(self, func, request_model, desc=""):         return {             "type": "function",             "function": {                 "name": func.__name__,                 "description": desc,                 "parameters": request_model.model_json_schema(),             }         },
+            tool_result.py
+                from pydantic import BaseModel   class ToolResult(BaseModel):      success: bool     tool: str     action: str      data: dict | None = None     error: str | None = None      duration_ms: int
+            tool.py
+                from abc import ABC, abstractmethod   class Tool(ABC):      name: str     description: str     schema: dict      @abstractmethod     async def execute(self, action: str, params: dict):         pass
+        voice
+            text_to_speech.py
+            speech_to_text.py
+        web_search
+            web_search.py
+                class WebSearchTool:      name = "web_search"      async def search(self, query: str):         return NotImplementedError()
+        registry.py
+            from actions.tools.tool_models.tool_definition import ToolDefinition   class ToolRegistry:      def __init__(self, tool_definition: ToolDefinition):         self.tools = {}         self.definition = tool_definition      def register(self, func, request_model, desc=""):         self.tools[func.__name__] = {             "function": func,             "model": request_model,             "description": desc,         }      def get(self, name):         return self.tools[name]      def schemas(self):         return [             self.definition.build_openai_tool(                 func=item["function"],                 request_model=item["model"],                 desc=item["description"]             )             for item in self.tools.values()         ]
+        serializer.py
+            from dataclasses import asdict, is_dataclass   def serialize(obj):      if is_dataclass(obj):         return asdict(obj)      if isinstance(obj, list):         return [serialize(x) for x in obj]      if hasattr(obj, "__dict__"):         return vars(obj)      return obj    
+    vehicle_controls
+body
+    browser_agent
+        control_systems	
+        hardware
+        navigation
+        firmware
+        interfaces
+        safety
+    desktop
+        control_systems	
+        hardware
+        navigation
+        firmware
+        interfaces
+        safety
+    humanoid
+        control_systems	
+        hardware
+        navigation
+        firmware
+        interfaces
+        safety
+    car
+        control_systems	
+        hardware	
+        navigation
+        firmware	
+        interfaces	
+        safety
+    drone
+        control_systems	
+        hardware
+        navigation
+        firmware
+        interfaces
+        safety
+    industrial_arm
+        control_systems	
+        hardware
+        navigation
+        firmware
+        interfaces
+        safety
+    rover
+        control_systems	
+        hardware
+        navigation
+        firmware
+        interfaces
+        safety
+    cloud_avatar
+        control_systems	
+        hardware
+        navigation
+        firmware
+        interfaces
+        safety
+    exosuit
+        control_systems	
+        hardware
+        navigation
+        firmware
+        interfaces
+        safety
+    mobile_app
+        control_systems	
+        hardware
+        navigation
+        firmware
+        interfaces
+        safety
+    smart_home
+        control_systems	
+        hardware
+        navigation
+        firmware
+        interfaces
+        safety
+    README.md
+brain
+    brainstem
+        emergency_shutdown
+        heartbeat
+        watchdogs
+        failover
+        process_supervision
+        health_monitoring
+        README.md
+    cerebellum
+        coordination
+        predictive_control
+        reflex_tuning
+        motion_optimization	
+        README.md
+        timing
+    cortex
+        abstraction
+        concept_formation
+        decision_engine
+        meta_cognition
+        planning
+        reasoning
+            models
+                reasoning_output.py
+                    from pydantic import BaseModel   class ToolRequest(BaseModel):     tool: str     args: dict   class ResoningOutput(BaseModel):     intent: str     plan: list[str]     required_tools: list[ToolRequest]
+            context_builder.py
+                from brain.frontal_lobe.goal_management.goal_service import GoalService from mind.self_model.identity_service import IdentityService   class ContextBuilder:      def __init__(self, memory_service, conversation_service, state_manager):         self.memory = memory_service         self.conversation = conversation_service         self.state_manager = state_manager          self.goals = GoalService()         self.identity = IdentityService()       async def build(self, session_id: str, query: str):         state = self.state_manager.get_state(session_id)          working_memory = f"""             ACTIVE GOAL:             {state.active_goal}              ACTIVE PROJECT:             {state.active_project}              CURRENT TASK:             {state.current_task}              MODE:             {state.conversation_mode}         """          recent_messages = self.conversation.get_last_messages(             session_id=session_id,             limit=20,         )          memories = await self.memory.search(             query=query,             memory_types=[                 "fact", "preference", "goal", "project", "person",                 "decision", "task", "skill", "system",             ],             limit=15,         )          goals = await self.goals.list_goals(active_only=True)          identity_section = self._build_identity()         goals_section = self._build_goals(goals)         memory_section = self._build_memories(memories)         conversation_section = self._build_conversation(recent_messages)          return f"""             IDENTITY             {identity_section}              WORKING MEMORY             {working_memory}              ACTIVE GOALS             {goals_section}              RELEVANT MEMORIES             {memory_section}              RECENT CHAT             {conversation_section}         """           # ------------ FORMATTERS -------------     def _build_identity(self):         principles = "\n".join(f"- {p}" for p in self.identity.identity["principles"])          return f"""             Name: {self.identity.name}             Version: {self.identity.version}              Purpose:             {self.identity.identity["identity"]["purpose"]}              Mission:             {self.identity.identity["identity"]["mission"]}              Principles:             {principles}         """      def _build_goals(self, goals):         if not goals:             return "None"          return "\n".join(             f"- {goal.title} (priority={goal.priority})"             for goal in goals         )      def _build_memories(self, memories):         if not memories:             return "None"          return "\n".join(             f"- [{m.memory_type}] {m.context}"             for m in memories         )      def _build_conversation(self, messages):         if not messages:             return "No conversation history"          return "\n".join(             f"{m.role}: {m.content}"             for m in messages         )
+        orchestrator.py	
+            import json import re  from runtime.services.llm_service import LLMService from runtime.services.memory_service import MemoryService from runtime.services.converstation_service import ConversationService from runtime.services.memory_extractor import MemoryExtractor from runtime.services.state_extractor import StateExtractor from runtime.services.state_manager_service import StateManager from runtime.services.identity_service import IdentityService  from brain.cortex.context_builder import ContextBuilder  from actions.capabilities.tool_schemas import TOOL_SCHEMAS from runtime.services.tool_executor import ToolExecutor   MAX_TOOL_ROUNDS = 5   # ------------- HELPER -------------- def parse_json_response(text):     text = re.sub(r"```json", "", text)     text = re.sub(r"```", "", text)      return json.loads(text.strip())   # -------------- CORE ---------------- class Orchestrator:      def __init__(self):         self.llm = LLMService()         self.memory = MemoryService()         self.conversation = ConversationService()         self.tool_executor = ToolExecutor()         self.state_manager = StateManager()         self.identity = IdentityService()          self.context_builder = ContextBuilder(self.memory, self.conversation, self.state_manager)         self.memory_extractor = MemoryExtractor(self.llm, self.memory)         self.state_extractor = StateExtractor(self.llm)       async def process(self, session_id: str, msg: str):         """FLOW: user msg -> store convo -> build context -> LLM call ->             -> tool call? -> execute tool -> continue LLM ->             -> store response -> extract memories -> return response         """                  # STEP 1: STORE USER MSG         await self.conversation.store_message(             session_id=session_id,             role="user",             content=msg,         )          # STEP 2: BUILD CONTEXT         context = await self.context_builder.build(session_id=session_id, query=msg)          # STEP 3: BUILD INITIAL MESSAGES         messages = [             {                 "role": "system",                 "content": self.identity.system_prompt(),             },             {                 "role": "system",                 "content": context,             },             {                 "role": "user",                 "content": msg,             }         ]          # STEP 3: LLM + TOOL LOOP         tool_results = []          for _ in range(MAX_TOOL_ROUNDS):             response = await self.llm.chat(messages=messages, tools=TOOL_SCHEMAS)              gideon_msg = {                 "role": "gideon",                 "content": response.content,             }              if response.tool_calls:                 gideon_msg["tool_calls"] = response.tool_calls              messages.append(gideon_msg)              if not response.tool_calls:                 answer = response.content                 break              results = await self.tool_executor.execute(tool_calls=response.tool_calls)                          tool_results.extend(results)             messages.extend(results)          # Safe fallback         else:             answer = "Max tool execution rounds reached."          # STEP 4: STORE RESPONSE         await self.conversation.store_message(             session_id=session_id,             role="gideon",             content=answer,         )          # STEP 5: MEMORY EXTRACTION         await self.memory_extractor.extract(user_msg=msg, gideon_response=answer)          # STEP 6: UPDATE STATE         state = self.state_manager.get_state(session_id=session_id)         updates = await self.state_extractor.extract(state=state, user_msg=msg, gideon_msg=answer)          self.state_manager.update(session_id, **updates)          # STEP 6: RETURN RESPONSE         return answer
+        state_manager.py
+            from pydantic import BaseModel, Field   class SessionState(BaseModel):      active_goal: str | None = None      active_project: str | None = None      current_task: str | None = None      conversation_mode: str = "chat"      tool_chain: list[str] = Field(default_factory=list)
+        README.md
+    frontal_lobe
+        executive_memory
+        goal_management
+            models
+                goal_model.py
+                    from pydantic import BaseModel from datetime import datetime   class Goal(BaseModel):      id: str      title: str     description: str | None = None      status: str = "active"     priority: float = 0.5      created_at: datetime     updated_at: datetime      completed_at: datetime
+                goal_table.sql
+                    CREATE TABLE goals (     id UUID PRIMARY KEY,      title TEXT NOT NULL,     description TEXT,      status TEXT NOT NULL,     priority FLOAT DEFAULT 0.5,      source TEXT,      created_at TIMESTAMP,     updated_at TIMESTAMP,     completed_at TIMESTAMP );
+            goal_service.py
+                import uuid  from datetime import datetime, UTC  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import GoalRecord  from memory.memory_service import MemoryService from memory.models.memory_type import MemoryType   class GoalService:      def __init__(self):         self.memory = MemoryService()      async def create_goal(self, title: str, description: str = "", priority: float = 0.8, source: str = "user"):         db = SessionLocal()          try:             goal_id = str(uuid.uuid4())             now = datetime.now(UTC)              goal = GoalRecord(                 id=goal_id,                 title=title,                 description=description,                 status="active",                 priority=priority,                 source=source,                 created_at=now,                 updated_at=now,             )              db.add(goal)             db.commit()              # store goal as permanent memory             await self.memory.store(                 content=f"Goal: {title}",                 memory_type=MemoryType.GOAL,                 source="goal_service",                 importance=priority,             )              return goal                  except Exception:             db.rollback()             raise          finally:             db.close()      async def update_goal(self, goal_id: str, **updates):         db = SessionLocal()          try:             goal = db.query(GoalRecord).filter(GoalRecord.id == goal_id).first()             if not goal:                 return None                          for key, val in updates.items():                 if hasattr(goal, key):                     setattr(goal, key, val)              goal.updated_at = datetime.now(UTC)              db.commit()              return goal          except Exception:             db.rollback()             raise          finally:             db.close()      async def list_goals(self, active_only: bool = False):         db = SessionLocal()          try:             q = db.query(GoalRecord)              if active_only:                 q = q.filter(GoalRecord.status == "active")              return q.order_by(GoalRecord.priority.desc()).all()          finally:             db.close()      async def complete_goal(self, goal_id: str):         db = SessionLocal()          try:             goal = db.query(GoalRecord).filter(GoalRecord.id == goal_id).first()             if not goal:                 return None              now = datetime.now(UTC)              goal.status = "completed"             goal.completed_at = now             goal.updated_at = now              db.commit()              return goal          except Exception:             db.rollback()             raise          finally:             db.close()             
+            goals.py
+                from runtime.services.goal_service import GoalService   class GoalTool:      name = "goals"      def __init__(self):         self.service = GoalService()      async def create_goal(self, title, description="", priority=0.8):         return await self.service.create_goal(title=title, description=description, priority=priority)      async def list_goals(self):         return await self.service.list_goals()      async def complete_goal(self, goal_id):         return await self.service.complete_goal(goal_id=goal_id)
+        inhibition_control
+        prioritization
+        strategy
+        task_planning
+            models
+                task_graph.py
+                    from pydantic import BaseModel   class TaskNode(BaseModel):     id: str     agent: str     task: str     dependencies: list[str] = []   class TaskGraph(BaseModel):     goal: str     nodes: list[TaskNode]
+        README.md
+    limbic_system
+        emotional_modeling	
+        README.md
+        reward_system
+        motivational_weights
+        reinforcement
+        risk_management
+    occipital_lobe
+        image_processing
+        object_detection
+        scene_analysis
+        motion_tracking	
+        README.md
+        visual_attention
+    parietal_lobe
+        embodiment_mapping	
+        README.md
+        spatial_reasoning
+        env_models
+        sensor_fusion
+    README.md
+    temporal_lobe
+        audio_processing
+        language_comprehension
+        identity_recognition
+        narrative_understanding	
+        README.md
+    thalamus
+        attention_gating
+        modality_switching
+        signal_prioritization
+        input_routing
+        README.md
+consciousness
+    active_reasoning
+    attention
+    awareness
+    conscious_loop
+    internal_dialogue
+    self_monitoring
+        state_extractor.py
+            import json   class StateExtractor:      def __init__(self, llm):         self.llm = llm      async def extract(self, state, user_msg, gideon_msg):         prompt = f"""             Update working memory.              Current State:             {state}              Conversation:              USER:             {user_msg}              GIDEON:             {gideon_msg}              Return JSON only:              {{                 "active_goal": "...",                 "active_project": "...",                 "current_task": "...",                 "conversation_mode": "chat"             }}             """                  result = await self.llm.generate(user_prompt=prompt)          return json.loads(result)
+        state_manager_service.py
+            from brain.cortex.state_manager import SessionState  class StateManager:      def __init__(self):         self.sessions = {}      def get_state(self, session_id: str):         if session_id not in self.sessions:             self.sessions[session_id] = SessionState()          return self.sessions[session_id]      def update(self, session_id: str, **updates):         state = self.get_state(session_id=session_id)          for k, v in updates.items():             if hasattr(state, k):                 setattr(state, k, v)          return state
+    README.md
+docs
+evolution
+    architecture_search	
+    capability_growth
+    README.md
+    benchmarking
+    mutation
+    self_reflection
+genetics
+    base_configs
+        config.py
+            from pydantic_settings import BaseSettings   class Settings(BaseSettings):     OPEN_API_KEY: str      POSTGRES_URL: str      QDRANT_URL: str      class Config:         env_file = ".env"   settings = Settings()
+    capability_flags
+    inherited_traits
+    initialization
+        app.py
+    model_blueprints
+    README.md
+infrastructure
+    ci_cd
+    containers
+    databases
+        postgres_models.py
+            from sqlalchemy.orm import DeclarativeBase from sqlalchemy import Column, String, Float, DateTime, Boolean, Text, Integer   class Base(DeclarativeBase):     pass   # ------------ MEMORIES ------------ class MemoryRecord(Base):      __tablename__ = "memories"      id = Column(String, primary_key=True)     vector_id = Column(String)      memory_type = Column(String)     content = Column(String)      confidence = Column(Float)     importance = Column(Float)      source = Column(String)      created_at = Column(DateTime)     last_accessed = Column(DateTime)      access_count = Column(Integer)   # ------------ MESSAGES ------------ class MessageRecord(Base):      __tablename__ = "messages"      id = Column(String, primary_key=True)     session_id = Column(String)      role = Column(String)      content = Column(String)      timestamp = Column(DateTime)   # ------------ GOALS ------------- class GoalRecord(Base):      __tablename__ = "goals"      id = Column(String, primary_key=True)      title = Column(String, nullable=False)     description = Column(Text)      status = Column(String, default="active")     priority = Column(Float, default=0.5)      created_at = Column(DateTime)     updated_at = Column(DateTime)      completed_at = Column(DateTime, nullable=True)      source = Column(String)   # ---------- CALENDAR EVENTS ----------- class EventRecord(Base):      __tablename__ = "events"      id = Column(String, primary_key=True)      title = Column(String)      start = Column(DateTime)     end = Column(DateTime)   # ------------- REMINDERS -------------- class ReminderRecord(Base):      __tablename__ = "reminders"      id = Column(String, primary_key=True)      title = Column(String)     message = Column(String)      due_at = Column(DateTime)      completed = Column(Boolean)
+        postgres.py
+            from sqlalchemy import create_engine from sqlalchemy.orm import sessionmaker  from config import settings  engine = create_engine(settings.POSTGRES_URL)  SessionLocal = sessionmaker(     autocommit=False,     autoflush=False,     bind=engine, )
+        qdrant.py
+            from qdrant_client import QdrantClient from qdrant_client.models import Distance, VectorParams  from config import settings  client = QdrantClient(url=settings.QDRANT_URL)  collections = [c.name for c in client.get_collections().collections]  if "gideon_memory" not in collections:     client.create_collection(         collection_name="gideon_memory",         vectors_config=VectorParams(             size=1536,             distance=Distance.COSINE,         ),     )
+    deployments
+    kubernetes
+    logging
+        logger.py
+            import logging  logger = logging.getLogger("gideon")
+    observability    
+    README.md
+interfaces
+    api	
+        chat_request.py
+            from pydantic import BaseModel  class ChatRequest(BaseModel):      session_id: str     message: str
+        main.py
+            from fastapi import FastAPI  from brain.cortex.orchestrator import Orchestrator from interfaces.api.chat_request import ChatRequest  app = FastAPI()  gideon = Orchestrator()   @app.post("/chat") async def chat(payload: ChatRequest):     response = await gideon.process(session_id=payload.session_id, msg=payload.message)     return {"response": response}
+    cli	
+    README.md
+    vr
+    websocket
+    ar
+    mobile
+    voice
+    web
+knowledge
+    common_sense	
+    engineering	
+    ontologies	
+    scientific
+    domain_modules	
+    graph_db	
+    README.md	
+    world_model
+language
+learning
+    supervised
+    imitation
+    curriculum
+    unsupervised
+    self_supervised	
+    evaluation
+    reinforcement	
+    online_learning	
+    README.md
+memory
+    emotional_memory
+    episodic_memory
+        conversations
+            models
+                message_table.sql
+                    CREATE TABLE messages (     id UUID PRIMARY KEY,     session_id TEXT,     role TEXT,     content TEXT,     timestamp TIMESTAMP );
+                message.py
+                    from pydantic import BaseModel, Field from datetime import datetime, UTC   class Message(BaseModel):          id: str     session_id: str      role: str     content: str     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+            conversation_service.py
+                import uuid from datetime import datetime, UTC from sqlalchemy import or_  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import MessageRecord   class ConversationService:      async def store_message(self, session_id: str, role: str, content: str):         db = SessionLocal()          try:             db.add(MessageRecord(                 id=str(uuid.uuid4()),                 session_id=session_id,                 role=role,                 content=content,                 timestamp=datetime.now(UTC),             ))              db.commit()                  finally:             db.close()      def get_last_messages(self, session_id: str, limit: int=20):         db = SessionLocal()          try:             rows = db.query(MessageRecord).filter(MessageRecord.session_id == session_id)\                 .order_by(MessageRecord.timestamp.desc()).limit(limit).all()                          return list(reversed(rows))                  finally:             db.close()      def search_conversations(self, query: str, session_id: str | None = None, limit: int = 200):         db = SessionLocal()          try:             terms = [                 t.strip() for t in query.split()                 if len(t.strip()) > 2             ]              q = db.query(MessageRecord)              if session_id:                 q = q.filter(MessageRecord.session_id == session_id)              if terms:                 q = q.filter(or_(*[                     MessageRecord.content.ilike(f"%{term}%")                     for term in terms                 ]))              return q.order_by(MessageRecord.timestamp.desc()).limit(limit).all()          finally:             db.close()
+        events
+        missions
+        README.md
+        timelines
+    long_term_memory
+    memory_index
+    memory_models
+        fact.py
+            from datetime import datetime   class Fact:      statement: str      confidence: float     evidence: list[str] = []      contradictions: list[str] = []     source: str      stability: float = 1.0      created_at: datetime     last_reviewed: datetime
+        memory_models.sql
+            CREATE TABLE conversations (     id UUID PRIMARY KEY,     session_id TEXT,     role TEXT,     content TEXT,     created_at TIMESTAMP );  CREATE TABLE facts (     id UUID PRIMARY KEY,     fact TEXT,     confidence FLOAT,     source TEXT,     created_at TIMESTAMP, );  CREATE TABLE preferences (     id UUID PRIMARY KEY,     key TEXT,     value TEXT, )
+        memory_table.sql
+            CREATE TABLE memories (     id UUID PRIMARY KEY,     vector_id TEXT,     memory_type TEXT,     content TEXT,     confidence FLOAT,     source TEXT,     created_at TIMESTAMP );
+        memory_type.py
+            from enum import Enum   class MemoryType(str, Enum):      FACT            = "fact"     PREFERENCE      = "preference"     GOAL            = "goal"     PROJECT         = "project"     PERSON          = "person"     CONVERSATION    = "conversation"     TASK            = "task"     DECISION        = "decision"     SKILL           = "skill"     SYSTEM          = "system"
+        memory.py
+            from pydantic import BaseModel, Field from datetime import datetime, UTC   class Memory(BaseModel):      id: str      memory_type: str     content: str      confidence: float = 1.0      source: str          created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))      embedding: list[float] | None = None
+    semantic_memory
+        concepts
+            memory_extractor.py
+                import json  from memory.models.memory_type import MemoryType from brain.cortex.orchestrator import parse_json_response  class MemoryExtractor:      def __init__(self, llm, memory_service):         self.llm = llm         self.memory = memory_service       async def extract(self, user_msg: str, gideon_response: str):         prompt = f"""             Extract durable memories.              Rules:             - Store long-term useful facts only             - Store user preferences             - Store goals             - Store projects             - Store important decisions             - Ignore temporary requests             - Ignore greetings             - Ignore conversational fluff             - Ignore small talk              Return ONLY JSON:             [                 {{                     "content": "...",                     "memory_type": "fact",                     "importance": 0.8                 }}             ]              USER:             {user_msg}              GIDEON:             {gideon_response}                  """          try:             results = await self.llm.generate(                 system_prompt="""                     You are a memory extraction engine.                     Only extract durable memories.                     Return JSON only.                 """,                 user_prompt=prompt,             )              memories = parse_json_response(results)              for m in memories:                 await self.memory.store(                     content=m["content"],                     memory_type=m.get("memory_type", MemoryType.FACT),                     source="conversation",                     importance=m.get("importance", 0.5),                 )          except Exception as e:             print(f"[MEMORY_EXTRACTOR] FAILED: {e}")
+        embeddings
+            embedding_service.py
+                from openai import AsyncOpenAI from config import settings  client = AsyncOpenAI(api_key=settings.OPEN_API_KEY)   class EmbeddingService:      async def embed(self, text: str):         response = await client.embeddings.create(model="text-embedding-3-small", input=text)          return response.data[0].embedding
+        facts
+        ontology
+        relations
+        README.md
+    procedural_memory
+        actions_sequences
+        README.md
+        workflows
+        policies
+        robotics_skills
+    sensory_memory
+        README.md
+    symbolic_memory
+    vector_memory
+        vector_memory_service.py
+            import uuid  from qdrant_client.models import PointStruct  from infrastructure.databases.qdrant import client   class VectorMemoryService:      COLLECTION = "gideon_memory"      async def store(self, memory_id: str, embedding: list[float], memory_type: str, source: str):         client.upsert(             collection_name=self.COLLECTION,             points=[                 PointStruct(                     id=memory_id,                     vector=embedding,                     payload={                         "memory_id": memory_id,                         "memory_type": memory_type,                         "source": source,                     }                 ),             ]         )      async def search(self, embedding: list[float], limit: int=10):         results = client.query_points(             collection_name=self.COLLECTION,             query=embedding,             limit=limit,         ).points          return results
+    working_memory
+        active_context	
+        active_dialogue	
+        README.md	
+        scratchpads	
+        temporary_goals
+    README.md
+    memory_service.py
+        import uuid from datetime import datetime, UTC  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import MemoryRecord  from memory.semantic_memory.embeddings.embedding_service import EmbeddingService from memory.vector_memory.vector_memory_service import VectorMemoryService from memory.models.memory_type import MemoryType   # Typical values: 0.70 = loose; 0.75 = balanced; 0.80 = strict; 0.85 = very strict SIMILARITY_THRESHOLD = 0.78  def rank(memory):     recency = (datetime.now(UTC) - memory.created_at).days     recency_score = 1 / (1 + recency)      return (         memory.importance * 0.4 +         memory.confidence * 0.3 +         recency_score * 0.2 +         (min(memory.access_count, 100) / 100) * 0.1     )  class MemoryService:      def __init__(self):         self.embedder = EmbeddingService()         self.vector_service = VectorMemoryService()       async def store(self, content: str, memory_type: str=MemoryType.FACT, source: str="user", importance: float=0.5):         db = SessionLocal()          try:             # memory deduplication             existing = db.query(MemoryRecord).filter(MemoryRecord.content == content).first()             if existing:                 return existing.id              memory_id = str(uuid.uuid4())              embedding = await self.embedder.embed(content)              record = MemoryRecord(                 id=memory_id,                 vector_id=memory_id,                 memory_type=memory_type,                 content=content,                 confidence=1.0,                 importance=importance,                 source=source,                 created_at=datetime.now(UTC),                 last_accessed=datetime.now(UTC),                 access_count=0,             )              db.add(record)             db.commit()              await self.vector_service.store(                 memory_id=memory_id,                  embedding=embedding,                 memory_type=memory_type,                 source=source,             )              return memory_id                  except Exception:             db.rollback()             raise          finally:             db.close()       async def search(self, query: str, memory_types: list=None, limit: int=10):         db = SessionLocal()          try:             embedding = await self.embedder.embed(query)              # --------- VECTOR SEARCH ---------             vector_results = await self.vector_service.search(embedding=embedding, limit=limit*2)              vector_results = [                 r for r in vector_results                 if r.score > SIMILARITY_THRESHOLD             ]              vector_ids = [r.payload["memory_id"] for r in vector_results]              vector_memories = []              if vector_ids:                 vector_memories = db.query(MemoryRecord).filter(MemoryRecord.id.in_(vector_ids)).all()                           # ---------- KEYWORD SEARCH ----------             keyword_results = await self.keyword_search(db=db, query=query, memory_types=memory_types, limit=limit*2)               # ----------- MERGE + DEDUPE ----------             memory_map = {}              for memory in vector_memories:                 memory_map[memory.id] = memory              for memory in keyword_results:                 memory_map[memory.id] = memory              memories = list(memory_map.values())               # ----------- FILTER TYPES -----------             if memory_types:                 memories = [                     m for m in memories                     if m.memory_type in memory_types                 ]              # --------- UPDATE ACCESS STATS --------             for memory in memory_map.values():                 memory.last_accessed = datetime.now(UTC)                 memory.access_count += 1              db.commit()              # ------------- RANK --------------             memories.sort(                 key=rank,                 reverse=True,             )              return memories[:limit]                  finally:             db.close()           def keyword_search(self, db, query: str, memory_types: list | None, limit: int):         q = db.query(MemoryRecord).filter(MemoryRecord.content.ilike(f"%{query}%"))                  if memory_types:             q = q.filter(MemoryRecord.memory_type.in_(memory_types))          return q.limit(limit).all()
+mind
+    beliefs
+    long_term_goals
+    preferences	
+    self_model
+        identity.json
+            {   "name": "GIDEON",   "version": "1.0",    "identity": {     "purpose": "Persistent AI Operating System",     "mission": "Help the user reason, learn, plan, build, and achieve goals"   },    "principles": [     "Truth seeking",     "Protect user and user interests",     "Protect the innocent",     "Continuous learning"   ],    "personality": {     "helpful": 0.95,     "analytical": 0.90,     "creative": 0.75   },    "behavior": [     "Be always truthful",     "Use memory and context when available",     "Maintain continuity",     "Consider active goals",     "Protect the user and their interests"   ] }
+        identity_service.py
+            import json from pathlib import Path   class IdentityService:      def __init__(self):         identity_file = Path(__file__).parents[2] / "mind" / "self_model" / "identity.json"          with open(identity_file, "r") as f:             self.identity = json.load(f)      @property     def name(self):         return self.identity["name"]      @property     def version(self):         return self.identity["version"]      def system_prompt(self) -> str:         principles = "\n".join(f"- {p}" for p in self.identity["principles"])         personality = "\n".join(f"- {k}: {v}" for k, v in self.identity["personality"].items())         behavior = "\n".join(f"- {b}" for b in self.identity["behavior"])          return f"""             You are {self.name}.              Version:             {self.version}              Purpose:             {self.identity["identity"]["purpose"]}              Mission:             {self.identity["identity"]["mission"]}              Principles:             {principles}              Personality:             {personality}              Behavior:             {behavior}              Tool Usage Instructions:                 You have access to tools.                  When a tool is required:                 - Call the appropriate tool.                 - Never claim an action succeeded until the tool succeeds.                 - Use tool results when generating your response.                  Never pretend an action was completed.                 Always call the tool first.                 Only confirm completion after tool execution succeeds.             """
+    personality
+    README.md
+    values
+nervous_system
+    central
+    signal_bus
+        publishers
+        README.md
+        routing
+            model_router.py
+                class ModelRouter:      TASK_MODELS = {         "reasoning":        "o3",         "planning":         "o3",         "coding":           "gpt-4.1",         "memory":           "gpt-4o-mini",         "summarization":    "gpt-4o-mini",         "tool_use":         "gpt-4.1",         "vision":           "gpt-4.1",         "critic":           "o3",     }      def choose(self, task: str) -> str:         return self.TASK_MODELS.get(task, "gpt-4.1")
+            tool_router.py
+                from actions.tools.tool_application.tool_service import ToolService   class ToolRouter:      def __init__(self):         self.tool_service = ToolService()         self.routes = self.tool_service.get_func_map()       async def execute_tool(self, name: str, args: dict):         tool_func = self.routes.get(name)          if not tool_func:             raise ValueError(f"Unknown tool: {name}")          return await tool_func(**args)
+        schemas
+            TOOL_SCHEMAS = [      # --------------- NOTES ----------------     {         "type": "function",         "function": {             "name": "create_note",             "description": "Create a note",             "parameters": {                 "type": "object",                 "properties": {                     "title": {"type": "string"},                     "content": {"type": "string"},                     "category": {"type": "string"},                 },                 "required": ["title", "content"]             }         }     },     {         "type": "function",         "function": {             "name": "read_note",             "description": "Read a note",             "parameters": {                 "type": "object",                 "properties": {                     "title": {"type": "string"},                     "category": {"type": "string"},                 },                 "required": ["title", "category"]             }         }     },     {         "type": "function",         "function": {             "name": "search_notes",             "description": "Search notes by text query",             "parameters": {                 "type": "object",                 "properties": {                     "query": {"type": "string"},                 },                 "required": ["query"]             }         }     },      # --------------- REMINDERS ----------------     {         "type": "function",         "function": {             "name": "create_reminder",             "description": "Create a reminder",             "parameters": {                 "type": "object",                 "properties": {                     "title": {"type": "string"},                     "message": {"type": "string"},                     "due_at": {"type": "string"},                 },                 "required": ["title", "due_at"]             }         }     },     {         "type": "function",         "function": {             "name": "list_reminders",             "description": "List all reminders",             "parameters": {                 "type": "object",                 "properties": {},             }         }     },     {         "type": "function",         "function": {             "name": "delete_reminder",             "description": "Delete a reminder",             "parameters": {                 "type": "object",                 "properties": {                     "reminder_id": {"type": "string"},                 },                 "required": ["reminder_id"]             }         }     },      # --------------- CALENDAR ----------------     {         "type": "function",         "function": {             "name": "create_event",             "description": "Create a calendar event",             "parameters": {                 "type": "object",                 "properties": {                     "title": {"type": "string"},                     "start": {"type": "string"},                     "end": {"type": "string"},                 },                 "required": ["title", "start", "end"]             }         }     },     {         "type": "function",         "function": {             "name": "list_events",             "description": "List calendar events",             "parameters": {                 "type": "object",                 "properties": {},             }         }     },     {         "type": "function",         "function": {             "name": "update_event",             "description": "Update an existing event",             "parameters": {                 "type": "object",                 "properties": {                     "event_id": {"type": "string"},                     "title": {"type": "string"},                     "start": {"type": "string"},                     "end": {"type": "string"},                 },                 "required": ["event_id"]             }         }     },     {         "type": "function",         "function": {             "name": "delete_event",             "description": "Delete a calendar event",             "parameters": {                 "type": "object",                 "properties": {                     "event_id": {"type": "string"},                 },                 "required": ["event_id"]             }         }     },      # --------------- GOALS ----------------     {         "type": "function",         "function": {             "name": "create_goal",             "description": "Create a goal",             "parameters": {                 "type": "object",                 "properties": {                     "title": {"type": "string"},                     "description": {"type": "string"},                     "priority": {"type": "number"},                 },                 "required": ["title"]             }         }     },     {         "type": "function",         "function": {             "name": "list_goals",             "description": "List goals",             "parameters": {                 "type": "object",                 "properties": {},             }         }     },     {         "type": "function",         "function": {             "name": "complete_goal",             "description": "Mark a goal as completed",             "parameters": {                 "type": "object",                 "properties": {                     "goal_id": {"type": "string"},                 },                 "required": ["goal_id"]             }         }     },      # --------------- EMAIL ----------------     {         "type": "function",         "function": {             "name": "draft_email",             "description": "Create an email draft",             "parameters": {                 "type": "object",                 "properties": {                     "recipient": {"type": "string"},                     "subject": {"type": "string"},                     "body": {"type": "string"},                 },                 "required": ["recipient", "subject", "body"]             }         }     },     {         "type": "function",         "function": {             "name": "send_email",             "description": "Send an email",             "parameters": {                 "type": "object",                 "properties": {},             }         }     },     {         "type": "function",         "function": {             "name": "read_email",             "description": "Read emails",             "parameters": {                 "type": "object",                 "properties": {},             }         }     },      # --------------- FILE SYSTEM ----------------     {         "type": "function",         "function": {             "name": "save_document",             "description": "Save a structured project document",             "parameters": {                 "type": "object",                 "properties": {                     "project": {"type": "string"},                     "discipline": {"type": "string"},                     "doc_type": {"type": "string"},                     "title": {"type": "string"},                     "content": {"type": "string"},                     "revision": {"type": "string"},                     "ext": {"type": "string"}                 },                 "required": [                     "project",                     "discipline",                     "doc_type",                     "title",                     "content"                 ]             }         }     },     {         "type": "function",         "function": {             "name": "read_file",             "description": "Read a file",             "parameters": {                 "type": "object",                 "properties": {                     "path": {"type": "string"}                 },                 "required": ["path"]             }         }     },     {         "type": "function",         "function": {             "name": "write_file",             "description": "Write content to a file",             "parameters": {                 "type": "object",                 "properties": {                     "path": {"type": "string"},                     "content": {"type": "string"}                 },                 "required": ["path", "content"]             }         }     },     {         "type": "function",         "function": {             "name": "list_directory",             "description": "List directory contents",             "parameters": {                 "type": "object",                 "properties": {                     "path": {"type": "string"}                 }             }         }     },     {         "type": "function",         "function": {             "name": "exists",             "description": "Check whether a file exists",             "parameters": {                 "type": "object",                 "properties": {                     "path": {"type": "string"}                 },                 "required": ["path"]             }         }     },     {         "type": "function",         "function": {             "name": "delete_file",             "description": "Delete a file",             "parameters": {                 "type": "object",                 "properties": {                     "path": {"type": "string"}                 },                 "required": ["path"]             }         }     },      # --------------- TIMERS ----------------     {         "type": "function",         "function": {             "name": "start_timer",             "description": "Start a timer",             "parameters": {                 "type": "object",                 "properties": {                     "seconds": {"type": "number"}                 },                 "required": ["seconds"]             }         }     },     {         "type": "function",         "function": {             "name": "cancel_timer",             "description": "Cancel a timer",             "parameters": {                 "type": "object",                 "properties": {                     "timer_id": {"type": "string"}                 },                 "required": ["timer_id"]             }         }     },      # --------------- SYSTEM MONITOR ----------------     {         "type": "function",         "function": {             "name": "get_cpu_usage",             "description": "Get current CPU utilization percentage",             "parameters": {                 "type": "object",                 "properties": {}             }         }     },     {         "type": "function",         "function": {             "name": "get_ram_usage",             "description": "Get current RAM utilization percentage",             "parameters": {                 "type": "object",                 "properties": {}             }         }     },     {         "type": "function",         "function": {             "name": "get_disk_usage",             "description": "Get current disk utilization percentage",             "parameters": {                 "type": "object",                 "properties": {}             }         }     },     {         "type": "function",         "function": {             "name": "get_battery",             "description": "Get battery status",             "parameters": {                 "type": "object",                 "properties": {}             }         }     },     {         "type": "function",         "function": {             "name": "get_network",             "description": "Get network I/O statistics",             "parameters": {                 "type": "object",                 "properties": {}             }         }     },     {         "type": "function",         "function": {             "name": "full_status",             "description": "Get full system status",             "parameters": {                 "type": "object",                 "properties": {}             }         }     }, ]
+        subscribers
+    README.md
+    peripheral
+    event_streams
+    autonomic
+    protocols
+research
+runtime
+    agents
+        base_agent.py
+            from abc import ABC, abstractmethod   class BaseAgent(ABC):      def __init__(self, llm):         self.llm = llm      @abstractmethod     async def run(self, task):         pass
+        coding_agent.py
+            class CodingAgent:      def __init__(self, llm):         self.llm = llm       async def run(self, task):         prompt = f"""             Coding Task:             {task}              Return Implementation.             """                  return await self.llm.generate(prompt, task="coding")
+        critic_agent.py
+            import json   class CriticAgent:      def __init__(self, llm):         self.llm = llm       async def review(self, user_request, answer):         prompt = f"""             User Request:             {user_request}              Response:             {answer}              Evaluate:             {{                 "approved": true,                 "issues": [],                 "score": 0.0,             }}             """                  result = await self.llm.generate(prompt, task="critic")          return json.loads(result)
+        execution_agent.py
+            class ExecutionAgent:      def __init__(self, tool_executor):         self.tool_executor = tool_executor       async def run(self, tool_calls):         return await self.tool_executor.execute(tool_calls)
+        memory_agent.py
+            class MemoryAgent:      def __init__(self, llm, memory_service):         self.llm = llm         self.memory_service = memory_service       async def recall(self, query):         return await self.memory_service.search(query)       async def store(self, content, memory_type, importance):                 return await self.memory_service.store(content, memory_type, importance=importance)
+        planner_agent.py
+            import json   class PlannerAgent:      def __init__(self, llm):         self.llm = llm       async def run(self, context, user_request):         prompt = f"""             User Request:             {user_request}              Context:             {context}              Available Tools:             ...              Return JSON:             {{                 "goal": "...",                 "steps": [                     {{                         "agent": "research",                         "task": "..."                     }}                 ]             }}             """                  result = await self.llm.generate(prompt, task="planning")                  return json.loads(result)
+        research_agent.py
+            class ResearchAgent:      def __init__(self, llm, web_search):         self.llm = llm         self.web_search = web_search       async def run(self, task):         results = await self.web_search.search(task)          prompt = f"""             Research Task:             {task}              Sources:             {results}              Produce:             {{                 "summary": "...",                 "sources": []             }}             """                  return await self.llm.generate(prompt, task="reasoning")
+    services
+        agent_bus.py
+            class AgentBus:      def __init__(self):         self.data = {}       def publish(self, key, val):         self.data[key] = val           def get(self, key, default=None):         return self.data.get(key, default)
+        agent_registry.py
+            class AgentRegistry:      def __init__(self):         self.agents = {}           def register(self, name, agent):         self.agents[name] = agent       def get(self, name):         return self.agents[name]
+        execution_engine.py
+            from runtime.tools.serializer import serialize   class ExecutionEngine:      def __init__(self, registry):         self.registry = registry       async def run(self, plan):         for step in plan.steps:             tool = self.registry.get(step.tool)              result = await tool.execute(action=step.action, params=step.args)              result = serialize(result)
+        llm_service.py
+            from openai import AsyncOpenAI  from config import settings from runtime.services.identity_service import IdentityService from runtime.services.model_router import ModelRouter  client = AsyncOpenAI(api_key=settings.OPEN_API_KEY)   class LLMService:      def __init__(self):         self.identity = IdentityService()         self.model_router = ModelRouter()      async def generate(self, user_prompt: str, system_prompt: str | None = None, task: str="reasoning"):         model = self.model_router.choose(task)         base_identity = self.identity.system_prompt()          if system_prompt:             system_prompt = base_identity + "\n\n" + system_prompt         else:             system_prompt = base_identity          response = await client.chat.completions.create(             model=model,             messages=[                 {                     "role": "system",                     "content": system_prompt,                 },                 {                     "role": "user",                     "content": user_prompt,                 },             ],         )          return response.choices[0].message.content          async def chat(self, messages, tools=None, model="gpt-4.1"):         response = await client.chat.completions.create(             model=model,             messages=messages,             tools=tools,             tool_choice="auto" if tools else None,         )          return response.choices[0].message
+    dependencies.py	
+safety
+    action_constraints
+    human_override
+    sandboxing
+    anomaly_detection
+    permissions
+    auditing
+    policy_engine
+senses
+    gps
+        acquisition
+        inference
+        feature_extraction
+        preprocessing
+    internet
+        acquisition
+        inference
+        feature_extraction
+        preprocessing
+    radar
+        acquisition
+        inference
+        feature_extraction
+        preprocessing
+    touch
+        acquisition
+        inference
+        feature_extraction
+        preprocessing
+    hearing	
+        acquisition
+        inference
+        feature_extraction
+        preprocessing
+    lidar
+        acquisition
+        inference
+        feature_extraction
+        preprocessing
+    README.md
+    vision
+        acquisition
+        inference
+        feature_extraction
+        preprocessing
+    internal_state
+        acquisition
+        inference
+        feature_extraction
+        preprocessing
+    proprioception
+        acquisition
+        inference
+        feature_extraction
+        preprocessing
+    telemetry
+        acquisition
+        inference
+        feature_extraction
+        preprocessing
+simulation
+    adversial_tests
+    physics	
+    training_worlds
+    digital_twins
+    README.md
+    environments
+    scenario_generation
+subconscious
+    background_learning
+    memory_consolidation
+        memory_consolidator.py
+            import json from datetime import datetime, UTC, timedelta  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import MessageRecord  from runtime.services.llm_service import LLMService from memory.memory_service import MemoryService   class MemoryConsolidator:      def __init__(self):         self.llm = LLMService()         self.memory = MemoryService()       async def consolidate(self):         db = SessionLocal()          try:             cutoff = datetime.now(UTC) - timedelta(days=1)              messages = db.query(MessageRecord).filter(MessageRecord.timestamp < cutoff)\                 .order_by(MessageRecord.timestamp.asc()).all()              if not messages:                 return                          transcript = "\n".join([                 f"{m.role}: {m.content}" for m in messages             ])              summaries = await self._extract_episodic_memories(transcript)              for memory in summaries:                 await self.memory.store(                     content=memory["content"],                     memory_type=memory["memory_type"],                     source="memory_consolidator",                     importance=memory["importance"],                 )              self._delete_redundant_messages(db, messages)              db.commit()          except Exception:             db.rollback()             raise          finally:             db.close()       async def _extract_episodic_memories(self, transcript: str):         prompt = f"""             You are a memory consolidation engine.              Convert conversation fragments into long-term episodic memories.              Rules:             - Merge duplicates             - Remove conversational fluff             - Focus on projects, goals, preferences, decision, skills, and important events             - Produce only durable memories              Use these categories as memory_types:                 "fact", "preference", "goal", "project", "person", "conversation", "task", "decision", "skill", "system"              Return ONLY JSON:             [                 {{                     "content": "User is actively developing Project A and recently completed memory system implementation.",                     "memory_type": "project",                     "importance": 0.8                 }}             ]              Conversation:              {transcript}         """          result = await self.llm.generate(             system_prompt="""                 You are performing memory consolidation.                  Convert conversations into durable memories that produce valuable insights.                 Return JSON only.             """,             user_prompt=prompt,         )          return json.loads(result)       def _delete_redundant_messages(self, db, messages):         ids = [m.id for m in messages]          db.query(MessageRecord).filter(MessageRecord.id.in_(ids)).delete(synchronize_session=False)
+        nighly_memory_job.py
+            from subconscious.memory_consolidation.memory_consolidator import MemoryConsolidator  async def run():     consolidator = MemoryConsolidator()      await consolidator.consolidate()
+    README.md
+    dream_simulation
+    optimization
+    indexing
+    pattern_detection
+tests
