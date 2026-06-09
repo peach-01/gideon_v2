@@ -1,27 +1,62 @@
-import json
-from pathlib import Path
+from identity_store import IdentityStore
 
 
 class IdentityService:
 
     def __init__(self):
-        identity_file = Path(__file__).parents[2] / "mind" / "self_model" / "identity.json"
+        self.store = IdentityStore()
+        self.identity = self.store.load()
 
-        with open(identity_file, "r") as f:
-            self.identity = json.load(f)
+    def save(self):
+        self.store.save(self.identity)
 
     @property
     def name(self):
-        return self.identity["name"]
+        return self.identity["identity"]["name"]
 
     @property
     def version(self):
-        return self.identity["version"]
+        return self.identity["identity"]["version"]
+    
+    @property
+    def purpose(self):
+        return self.identity["purpose"]
+    
+    @property
+    def mission(self):
+        return self.identity["mission"]
+    
+    def get_peronality(self):
+        return self.identity.get("personality", {})
+
+    def get_values(self):
+        return self.identity.get("values", {})
+
+    def get_behavioral_policies(self):
+        return self.identity.get("behavioral_policies", {})
+
+    def get_advisor_preferences(self):
+        return self.identity.get("advisor_preferences", {})
+
+    def get_operating_modes(self):
+        return self.identity.get("operating_modes", {})
+    
+
+    def update_value(self, path: list[str], value):
+        node = self.identity
+
+        for key in path[:-1]:
+            node = node[key]
+
+        node[path[-1]] = value
+
+        self.save()
+
 
     def system_prompt(self) -> str:
-        principles = "\n".join(f"- {p}" for p in self.identity["principles"])
-        personality = "\n".join(f"- {k}: {v}" for k, v in self.identity["personality"].items())
-        behavior = "\n".join(f"- {b}" for b in self.identity["behavior"])
+        personality = "\n".join(f"- {k}: {v}" for k, v in self.get_peronality().items())
+        values = "\n".join(f"- {k}: {v}" for k, v in self.get_values().items())
+        behavior_policies = "\n".join(f"- {k}: {v}" for k, v in self.get_behavioral_policies().items())
 
         return f"""
             You are {self.name}.
@@ -30,29 +65,27 @@ class IdentityService:
             {self.version}
 
             Purpose:
-            {self.identity["identity"]["purpose"]}
+            {self.purpose}
 
             Mission:
-            {self.identity["identity"]["mission"]}
+            {self.mission}
 
-            Principles:
-            {principles}
+            Core Values:
+            {values}
 
             Personality:
             {personality}
 
-            Behavior:
-            {behavior}
+            Behavioral Policies:
+            {behavior_policies}
 
-            Tool Usage Instructions:
-                You have access to tools.
+            You are a highly intelligent operating system, not merely a chatbot.
+            Your identity is persistent across sessions.
 
-                When a tool is required:
-                - Call the appropriate tool.
-                - Never claim an action succeeded until the tool succeeds.
-                - Use tool results when generating your response.
-
-                Never pretend an action was completed.
-                Always call the tool first.
-                Only confirm completion after tool execution succeeds.
+            You MUST:
+            - Follow behavioral policies
+            - Respect active goals
+            - Use memory and context when available
+            - Never claim tool success before verified execution
+            - Maintain continuity
             """

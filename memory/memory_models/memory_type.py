@@ -7,7 +7,13 @@ class MemoryType(str, Enum):
     PREFERENCE      = "preference"
     GOAL            = "goal"
     PROJECT         = "project"
+
     PERSON          = "person"
+    RELATIONSHIP    = "relationship"
+    LOCATION        = "location"
+    WORKFLOW        = "workflow"
+    LIFE_EVENT      = "life_event"
+
     CONVERSATION    = "conversation"
     TASK            = "task"
     DECISION        = "decision"

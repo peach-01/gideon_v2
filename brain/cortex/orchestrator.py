@@ -1,15 +1,15 @@
 import json
 import re
 
-from runtime.services.llm_service import LLMService
+from runtime.services.advisor_service import AdvisorService
 from memory.memory_service import MemoryService
-from memory.episodic_memory.conversations.converstation_service import ConversationService
-from memory.semantic_memory.concepts.memory_extractor import MemoryExtractor
-from consciousness.self_monitoring.state_extractor import StateExtractor
-from consciousness.self_monitoring.state_manager_service import StateManager
+from memory.long_term_memory.episodic_memory.conversations.converstation_service import ConversationService
+from memory.long_term_memory.semantic_memory.concepts.memory_extractor import MemoryExtractor
+from brain.cortex.workspace.state_extractor import StateExtractor
+from brain.cortex.workspace.state_manager_service import StateManager
 from mind.self_model.identity_service import IdentityService
 
-from brain.cortex.reasoning.context_builder import ContextBuilder
+from brain.cortex.workspace.context_builder import ContextBuilder
 
 from nervous_system.signal_bus.schemas.tool_schemas import TOOL_SCHEMAS
 from actions.tools.tool_application.tool_executor import ToolExecutor
@@ -30,7 +30,7 @@ def parse_json_response(text):
 class Orchestrator:
 
     def __init__(self):
-        self.llm = LLMService()
+        self.advisor = AdvisorService()
         self.memory = MemoryService()
         self.conversation = ConversationService()
         self.tool_executor = ToolExecutor()
@@ -38,8 +38,8 @@ class Orchestrator:
         self.identity = IdentityService()
 
         self.context_builder = ContextBuilder(self.memory, self.conversation, self.state_manager)
-        self.memory_extractor = MemoryExtractor(self.llm, self.memory)
-        self.state_extractor = StateExtractor(self.llm)
+        self.memory_extractor = MemoryExtractor(self.advisor, self.memory)
+        self.state_extractor = StateExtractor(self.advisor)
 
 
     async def process(self, session_id: str, msg: str):
@@ -78,7 +78,7 @@ class Orchestrator:
         tool_results = []
 
         for _ in range(MAX_TOOL_ROUNDS):
-            response = await self.llm.chat(messages=messages, tools=TOOL_SCHEMAS)
+            response = await self.advisor.chat(task="reasoning", messages=messages, tools=TOOL_SCHEMAS)
 
             gideon_msg = {
                 "role": "gideon",

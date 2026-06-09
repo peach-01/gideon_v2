@@ -4,14 +4,14 @@ from datetime import datetime, UTC, timedelta
 from infrastructure.databases.postgres import SessionLocal
 from infrastructure.databases.postgres_models import MessageRecord
 
-from runtime.services.llm_service import LLMService
+from runtime.services.advisor_service import AdvisorService
 from memory.memory_service import MemoryService
 
 
 class MemoryConsolidator:
 
     def __init__(self):
-        self.llm = LLMService()
+        self.advisor = AdvisorService()
         self.memory = MemoryService()
 
 
@@ -82,14 +82,15 @@ class MemoryConsolidator:
             {transcript}
         """
 
-        result = await self.llm.generate(
+        result = await self.advisor.ask(
             system_prompt="""
                 You are performing memory consolidation.
 
                 Convert conversations into durable memories that produce valuable insights.
                 Return JSON only.
             """,
-            user_prompt=prompt,
+            prompt=prompt,
+            task="summarization",
         )
 
         return json.loads(result)

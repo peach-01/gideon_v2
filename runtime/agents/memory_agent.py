@@ -1,7 +1,7 @@
 class MemoryAgent:
 
-    def __init__(self, llm, memory_service):
-        self.llm = llm
+    def __init__(self, advisor_service, memory_service):
+        self.advisor = advisor_service
         self.memory_service = memory_service
 
 

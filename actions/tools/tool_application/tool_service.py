@@ -1,10 +1,10 @@
-from actions.tools.filesystem.filesystem import FileSystemTool
-from actions.tools.notes.notes import NotesTool
-from actions.tools.reminders.reminders import ReminderTool
-from actions.tools.calendar.calendar import CalendarTool
-from actions.tools.email.email import EmailTool
-from actions.tools.system_monitor.system_monitor import SystemMonitorTool
-from actions.tools.web_search.web_search import WebSearchTool
+from actions.system.filesystem.filesystem import FileSystemTool
+from actions.productivity.notes.notes import NotesTool
+from actions.productivity.reminders.reminders import ReminderTool
+from actions.productivity.calendar.calendar import CalendarTool
+from actions.communication.email.email import EmailTool
+from actions.system.system_monitor.system_monitor import SystemMonitorTool
+from actions.system.web_search.web_search import WebSearchTool
 from brain.frontal_lobe.goal_management.goals import GoalTool
 
 

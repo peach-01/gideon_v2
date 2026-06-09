@@ -1,5 +1,5 @@
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import Column, String, Float, DateTime, Boolean, Text, Integer
+from sqlalchemy import Column, String, Float, DateTime, Boolean, Text, Integer, ForeignKey
 
 
 class Base(DeclarativeBase):
@@ -7,6 +7,22 @@ class Base(DeclarativeBase):
 
 
 # ------------ MEMORIES ------------
+class EntityRecord(Base):
+
+    __tablename__ = "entities"
+
+    id = Column(String, primary_key=True)
+
+    name = Column(String)
+    entity_type = Column(String)
+
+    aliases: list[str] = []
+
+    description: str | None = None
+
+    created_at: DateTime
+
+
 class MemoryRecord(Base):
 
     __tablename__ = "memories"
@@ -16,6 +32,7 @@ class MemoryRecord(Base):
 
     memory_type = Column(String)
     content = Column(String)
+    canonical_content = Column(String, index=True)
 
     confidence = Column(Float)
     importance = Column(Float)
@@ -26,6 +43,21 @@ class MemoryRecord(Base):
     last_accessed = Column(DateTime)
 
     access_count = Column(Integer)
+
+
+class MemoryEdge(Base):
+
+    __tablename__ = "memory_edges"
+
+    id = Column(String, primary_key=True)
+
+    source_identity = Column(String, ForeignKey("entities.id"))
+    relation = Column(String, index=True)
+    target_entity = Column(ForeignKey("entities.id"))
+
+    confidence = Column(Float, default=1.0)
+
+    created_at = Column(DateTime)
 
 
 # ------------ MESSAGES ------------

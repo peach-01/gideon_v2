@@ -1,7 +1,7 @@
 class ResearchAgent:
 
-    def __init__(self, llm, web_search):
-        self.llm = llm
+    def __init__(self, advisor_service, web_search):
+        self.advisor = advisor_service
         self.web_search = web_search
 
 
@@ -22,4 +22,4 @@ class ResearchAgent:
             }}
             """
         
-        return await self.llm.generate(prompt, task="reasoning")
+        return await self.advisor.ask(prompt=prompt, task="reasoning")

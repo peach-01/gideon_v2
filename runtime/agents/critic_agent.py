@@ -3,8 +3,8 @@ import json
 
 class CriticAgent:
 
-    def __init__(self, llm):
-        self.llm = llm
+    def __init__(self, advisor_service):
+        self.advisor = advisor_service
 
 
     async def review(self, user_request, answer):
@@ -23,6 +23,6 @@ class CriticAgent:
             }}
             """
         
-        result = await self.llm.generate(prompt, task="critic")
+        result = await self.advisor.ask(prompt=prompt, task="critic")
 
         return json.loads(result)

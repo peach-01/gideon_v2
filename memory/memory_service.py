@@ -1,12 +1,16 @@
 import uuid
 from datetime import datetime, UTC
+from math import log
 
 from infrastructure.databases.postgres import SessionLocal
 from infrastructure.databases.postgres_models import MemoryRecord
 
-from memory.semantic_memory.embeddings.embedding_service import EmbeddingService
-from memory.vector_memory.vector_memory_service import VectorMemoryService
-from memory.models.memory_type import MemoryType
+from runtime.services.llm_service import LLMService
+
+from memory.long_term_memory.semantic_memory.embeddings.embedding_service import EmbeddingService
+from memory.storage.vector_memory.vector_memory_service import VectorMemoryService
+from memory.memory_models.memory_type import MemoryType
+from memory.long_term_memory.semantic_memory.relations.canonicalizer import MemoryCanonicalizer
 
 
 # Typical values: 0.70 = loose; 0.75 = balanced; 0.80 = strict; 0.85 = very strict
@@ -17,10 +21,10 @@ def rank(memory):
     recency_score = 1 / (1 + recency)
 
     return (
-        memory.importance * 0.4 +
-        memory.confidence * 0.3 +
-        recency_score * 0.2 +
-        (min(memory.access_count, 100) / 100) * 0.1
+        memory.importance * 0.30 +
+        memory.confidence * 0.40 +
+        recency_score * 0.10 +
+        log(memory.access_count + 1) * 0.20
     )
 
 class MemoryService:
@@ -28,6 +32,11 @@ class MemoryService:
     def __init__(self):
         self.embedder = EmbeddingService()
         self.vector_service = VectorMemoryService()
+        self.canonicalizer = MemoryCanonicalizer(llm=LLMService())
+
+    
+    def reinforce(confidence):
+        return confidence + (1.0 - confidence) * 0.15
 
 
     async def store(self, content: str, memory_type: str=MemoryType.FACT, source: str="user", importance: float=0.5):
@@ -35,24 +44,39 @@ class MemoryService:
 
         try:
             # memory deduplication
-            existing = db.query(MemoryRecord).filter(MemoryRecord.content == content).first()
+            canonical_content = await self.canonicalizer.canonicalize(content=content, memory_type=str(memory_type))
+
+            existing = db.query(MemoryRecord).filter(MemoryRecord.canonical_content == canonical_content).first()
             if existing:
+                existing.confidence = self.reinforce(existing.confidence)
+
+                existing.last_accessed = datetime.now(UTC)
+                existing.access_count += 1
+                
+                db.commit()
+
                 return existing.id
 
             memory_id = str(uuid.uuid4())
 
-            embedding = await self.embedder.embed(content)
+            embedding = await self.embedder.embed(canonical_content)
 
             record = MemoryRecord(
                 id=memory_id,
                 vector_id=memory_id,
+
                 memory_type=memory_type,
                 content=content,
+                canonical_content=canonical_content,
+
                 confidence=1.0,
                 importance=importance,
+                
                 source=source,
+                
                 created_at=datetime.now(UTC),
                 last_accessed=datetime.now(UTC),
+                
                 access_count=0,
             )
 

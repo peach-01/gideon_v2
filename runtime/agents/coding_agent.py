@@ -1,7 +1,7 @@
 class CodingAgent:
 
-    def __init__(self, llm):
-        self.llm = llm
+    def __init__(self, advisor_service):
+        self.advisor = advisor_service
 
 
     async def run(self, task):
@@ -12,4 +12,4 @@ class CodingAgent:
             Return Implementation.
             """
         
-        return await self.llm.generate(prompt, task="coding")
+        return await self.advisor.ask(prompt=prompt, task="coding")
