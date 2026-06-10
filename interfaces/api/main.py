@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from brain.cortex.orchestrator import Orchestrator
+from runtime.orchestrator import Orchestrator
 from interfaces.api.chat_request import ChatRequest
 
 app = FastAPI()

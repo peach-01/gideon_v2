@@ -1,7 +1,9 @@
 from openai import AsyncOpenAI
 
 from genetics.base_configs.config import settings
-from mind.self_model.identity_service import IdentityService
+
+from mind.self_model.self_model_service import SelfModelService
+from mind.self_model.self_model_formatter import SelfModelFormatter
 
 client = AsyncOpenAI(api_key=settings.OPEN_API_KEY)
 
@@ -18,12 +20,17 @@ class OpenAIProvider:
         "tool_use": "gpt-4.1",
     }
 
+
     def __init__(self):
-        self.identity = IdentityService()
+        self.self_model = SelfModelService()
+        self.formatter = SelfModelFormatter()
+
 
     async def generate(self, task, prompt, system_prompt=""):
         model = self.MODEL_MAP.get(task, "gpt-4.1")
-        base_identity = self.identity.system_prompt()
+        self_snap = self.self_model.snapshot()
+
+        base_identity = self.formatter.format(self_snap)
 
         if system_prompt:
             system_prompt = base_identity + "\n\n" + system_prompt

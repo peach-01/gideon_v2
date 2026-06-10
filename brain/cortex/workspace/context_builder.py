@@ -1,5 +1,7 @@
 from brain.frontal_lobe.goal_management.goal_service import GoalService
-from mind.self_model.identity_service import IdentityService
+
+from mind.self_model.self_model_service import SelfModelService
+from mind.self_model.self_model_formatter import SelfModelFormatter
 
 
 class ContextBuilder:
@@ -10,7 +12,8 @@ class ContextBuilder:
         self.state_manager = state_manager
 
         self.goals = GoalService()
-        self.identity = IdentityService()
+        self.self_model = SelfModelService()
+        self.self_model_formatter = SelfModelFormatter()
 
 
     async def build(self, session_id: str, query: str):
@@ -45,15 +48,16 @@ class ContextBuilder:
         )
 
         goals = await self.goals.list_goals(active_only=True)
+        self_snapshot = self.self_model.snapshot()
 
-        identity_section = self._build_identity()
+        self_model_section = self.self_model_formatter.format(snapshot=self_snapshot)
         goals_section = self._build_goals(goals)
         memory_section = self._build_memories(memories)
         conversation_section = self._build_conversation(recent_messages)
 
         return f"""
-            IDENTITY
-            {identity_section}
+            SELF MODEL
+            {self_model_section}
 
             WORKING MEMORY
             {working_memory}
@@ -70,23 +74,6 @@ class ContextBuilder:
     
 
     # ------------ FORMATTERS -------------
-    def _build_identity(self):
-        values = "\n".join(f"- {k}: {v}" for k, v in self.identity.get_values().items())
-
-        return f"""
-            Name: {self.identity.name}
-            Version: {self.identity.version}
-
-            Purpose:
-            {self.identity.purpose}
-
-            Mission:
-            {self.identity.mission}
-
-            Core Values:
-            {values}
-        """
-
     def _build_goals(self, goals):
         if not goals:
             return "None"

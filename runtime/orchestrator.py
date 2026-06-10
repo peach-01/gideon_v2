@@ -2,16 +2,20 @@ import json
 import re
 
 from runtime.services.advisor_service import AdvisorService
+
 from memory.memory_service import MemoryService
 from memory.long_term_memory.episodic_memory.conversations.converstation_service import ConversationService
 from memory.long_term_memory.semantic_memory.concepts.memory_extractor import MemoryExtractor
+
 from brain.cortex.workspace.state_extractor import StateExtractor
 from brain.cortex.workspace.state_manager_service import StateManager
-from mind.self_model.identity_service import IdentityService
-
 from brain.cortex.workspace.context_builder import ContextBuilder
 
+from mind.self_model.self_model_service import SelfModelService
+from mind.self_model.self_model_formatter import SelfModelFormatter
+
 from nervous_system.signal_bus.schemas.tool_schemas import TOOL_SCHEMAS
+
 from actions.tools.tool_application.tool_executor import ToolExecutor
 
 
@@ -35,7 +39,9 @@ class Orchestrator:
         self.conversation = ConversationService()
         self.tool_executor = ToolExecutor()
         self.state_manager = StateManager()
-        self.identity = IdentityService()
+
+        self.self_model = SelfModelService()
+        self.self_model_formatter = SelfModelFormatter()
 
         self.context_builder = ContextBuilder(self.memory, self.conversation, self.state_manager)
         self.memory_extractor = MemoryExtractor(self.advisor, self.memory)
@@ -57,12 +63,13 @@ class Orchestrator:
 
         # STEP 2: BUILD CONTEXT
         context = await self.context_builder.build(session_id=session_id, query=msg)
+        snapshot = self.self_model.snapshot()
 
         # STEP 3: BUILD INITIAL MESSAGES
         messages = [
             {
                 "role": "system",
-                "content": self.identity.system_prompt(),
+                "content": self.self_model_formatter.format(snapshot=snapshot),
             },
             {
                 "role": "system",

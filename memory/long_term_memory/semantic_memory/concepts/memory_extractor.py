@@ -1,7 +1,7 @@
 import json
 
 from memory.memory_models.memory_type import MemoryType
-from brain.cortex.orchestrator import parse_json_response
+from runtime.orchestrator import parse_json_response
 
 class MemoryExtractor:
 

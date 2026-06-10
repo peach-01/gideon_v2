@@ -1,4 +1,4 @@
-from identity_store import IdentityStore
+from mind.identity.identity_store import IdentityStore
 
 
 class IdentityService:
@@ -52,40 +52,5 @@ class IdentityService:
 
         self.save()
 
-
-    def system_prompt(self) -> str:
-        personality = "\n".join(f"- {k}: {v}" for k, v in self.get_peronality().items())
-        values = "\n".join(f"- {k}: {v}" for k, v in self.get_values().items())
-        behavior_policies = "\n".join(f"- {k}: {v}" for k, v in self.get_behavioral_policies().items())
-
-        return f"""
-            You are {self.name}.
-
-            Version:
-            {self.version}
-
-            Purpose:
-            {self.purpose}
-
-            Mission:
-            {self.mission}
-
-            Core Values:
-            {values}
-
-            Personality:
-            {personality}
-
-            Behavioral Policies:
-            {behavior_policies}
-
-            You are a highly intelligent operating system, not merely a chatbot.
-            Your identity is persistent across sessions.
-
-            You MUST:
-            - Follow behavioral policies
-            - Respect active goals
-            - Use memory and context when available
-            - Never claim tool success before verified execution
-            - Maintain continuity
-            """
+    def snapshot(self):
+        return self.identity
