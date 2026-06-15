@@ -5,13 +5,14 @@ from math import log
 from infrastructure.databases.postgres import SessionLocal
 from infrastructure.databases.postgres_models import MemoryRecord
 
-from runtime.services.llm_service import LLMService
+from runtime.services.advisor_service import AdvisorService
 
 from memory.long_term_memory.semantic_memory.embeddings.embedding_service import EmbeddingService
 from memory.storage.vector_memory.vector_memory_service import VectorMemoryService
 from memory.memory_models.memory_type import MemoryType
 from memory.long_term_memory.semantic_memory.relations.canonicalizer import MemoryCanonicalizer
-
+from memory.storage.lineage.lineage_service import LineageService
+from memory.memory_models.provenance import Provenance
 
 # Typical values: 0.70 = loose; 0.75 = balanced; 0.80 = strict; 0.85 = very strict
 SIMILARITY_THRESHOLD = 0.78
@@ -32,14 +33,15 @@ class MemoryService:
     def __init__(self):
         self.embedder = EmbeddingService()
         self.vector_service = VectorMemoryService()
-        self.canonicalizer = MemoryCanonicalizer(llm=LLMService())
+        self.canonicalizer = MemoryCanonicalizer(advisor_service=AdvisorService())
+        self.lineage = LineageService()
 
     
-    def reinforce(confidence):
+    def reinforce(self, confidence: float):
         return confidence + (1.0 - confidence) * 0.15
 
 
-    async def store(self, content: str, memory_type: str=MemoryType.FACT, source: str="user", importance: float=0.5):
+    async def store(self, content: str, provenance: Provenance | None = None, memory_type: str=MemoryType.FACT, source: str="user", importance: float=0.5):
         db = SessionLocal()
 
         try:
@@ -61,6 +63,13 @@ class MemoryService:
 
             embedding = await self.embedder.embed(canonical_content)
 
+            if provenance and provenance.parent_memory_id:
+                await self.lineage.add_link(
+                    child_memory_id=memory_id,
+                    parent_memory_id=provenance.parent_memory_id,
+                    relationship_type="derived_from"
+                )
+
             record = MemoryRecord(
                 id=memory_id,
                 vector_id=memory_id,
@@ -74,10 +83,12 @@ class MemoryService:
                 
                 source=source,
                 
-                created_at=datetime.now(UTC),
                 last_accessed=datetime.now(UTC),
-                
                 access_count=0,
+
+                provenance=provenance,
+                
+                created_at=datetime.now(UTC),
             )
 
             db.add(record)

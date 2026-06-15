@@ -47,7 +47,6 @@ actions
         web_search
             web_search.py
                 class WebSearchTool:      name = "web_search"      async def search(self, query: str):         return NotImplementedError()
-    README.md
     tools
         tool_application
             tool_dispatcher.py
@@ -89,14 +88,12 @@ body
         exosuit
         mobile_app
         smart_home
-    README.md
 brain
     cerebellum
         coordination
         predictive_control
         reflex_tuning
         motion_optimization	
-        README.md
         timing
     cortex
         abstraction
@@ -119,7 +116,6 @@ brain
                 from brain.cortex.workspace.state_manager import SessionState  class StateManager:      def __init__(self):         self.sessions = {}      def get_state(self, session_id: str):         if session_id not in self.sessions:             self.sessions[session_id] = SessionState()          return self.sessions[session_id]      def update(self, session_id: str, **updates):         state = self.get_state(session_id=session_id)          for k, v in updates.items():             if hasattr(state, k):                 setattr(state, k, v)          return state
             state_manager.py
                 from pydantic import BaseModel, Field   class SessionState(BaseModel):      active_goal: str | None = None      active_project: str | None = None      current_task: str | None = None      conversation_mode: str = "chat"      tool_chain: list[str] = Field(default_factory=list)
-        README.md
     frontal_lobe
         executive_memory
         goal_management
@@ -139,10 +135,8 @@ brain
             models
                 task_graph.py
                     from pydantic import BaseModel   class TaskNode(BaseModel):     id: str     agent: str     task: str     dependencies: list[str] = []   class TaskGraph(BaseModel):     goal: str     nodes: list[TaskNode]
-        README.md
     limbic_system
         emotional_modeling	
-        README.md
         reward_system
         motivational_weights
         reinforcement
@@ -152,27 +146,22 @@ brain
         object_detection
         scene_analysis
         motion_tracking	
-        README.md
         visual_attention
     parietal_lobe
         embodiment_mapping	
-        README.md
         spatial_reasoning
         env_models
         sensor_fusion
-    README.md
     temporal_lobe
         audio_processing
         language_comprehension
         identity_recognition
         narrative_understanding	
-        README.md
     thalamus
         attention_gating
         modality_switching
         signal_prioritization
         input_routing
-        README.md
 consciousness
     active_reasoning
     attention
@@ -180,16 +169,17 @@ consciousness
     conscious_loop
     internal_dialogue
     self_monitoring
-    README.md
 docs
 evolution
     architecture_search	
     capability_growth
-    README.md
     benchmarking
     mutation
     self_reflection
-        from mind.beliefs.belief_service import BeliefService   class ReflectionService:      def __init__(self):         self.beliefs = BeliefService()       def process_experience(self, experience):         for lesson in experience.lessons:             if self.beliefs.find(lesson):                 self.beliefs.reinforce(                     statement=lesson,                      evidence=experience.title                 )              else:                 self.beliefs.add(                     statement=lesson,                     domain="experience",                     source="reflection",                     confidence=experience.confidence,                     evidence=[experience.title],                 )
+        reflection_service.py
+            from mind.beliefs.belief_service import BeliefService   class ReflectionService:      def __init__(self):         self.beliefs = BeliefService()       def process_experience(self, experience):         for lesson in experience.lessons:             if self.beliefs.find(lesson):                 self.beliefs.reinforce(                     statement=lesson,                      evidence=experience.title                 )              else:                 self.beliefs.add(                     statement=lesson,                     domain="experience",                     source="reflection",                     confidence=experience.confidence,                     evidence=[experience.title],                 )
+        reflection_table.sql
+            CREATE TABLE reflections (      id UUID PRIMARY KEY,      content TEXT,      source_memory_id UUID,      confidence FLOAT,      created_at TIMESTAMP );
 genetics
     base_configs
         config.py
@@ -199,13 +189,12 @@ genetics
     initialization
         app.py
     model_blueprints
-    README.md
 infrastructure
     ci_cd
     containers
     databases
         postgres_models.py
-            from sqlalchemy.orm import DeclarativeBase from sqlalchemy import Column, String, Float, DateTime, Boolean, Text, Integer, ForeignKey   class Base(DeclarativeBase):     pass   # ------------ MEMORIES ------------ class EntityRecord(Base):      __tablename__ = "entities"      id = Column(String, primary_key=True)      name = Column(String)     entity_type = Column(String)      aliases: list[str] = []      description: str | None = None      created_at: DateTime   class MemoryRecord(Base):      __tablename__ = "memories"      id = Column(String, primary_key=True)     vector_id = Column(String)      memory_type = Column(String)     content = Column(String)     canonical_content = Column(String, index=True)      confidence = Column(Float)     importance = Column(Float)      source = Column(String)      created_at = Column(DateTime)     last_accessed = Column(DateTime)      access_count = Column(Integer)   class MemoryEdge(Base):      __tablename__ = "memory_edges"      id = Column(String, primary_key=True)      source_identity = Column(String, ForeignKey("entities.id"))     relation = Column(String, index=True)     target_entity = Column(ForeignKey("entities.id"))      confidence = Column(Float, default=1.0)      created_at = Column(DateTime)   # ------------ MESSAGES ------------ class MessageRecord(Base):      __tablename__ = "messages"      id = Column(String, primary_key=True)     session_id = Column(String)      role = Column(String)      content = Column(String)      timestamp = Column(DateTime)   # ------------ GOALS ------------- class GoalRecord(Base):      __tablename__ = "goals"      id = Column(String, primary_key=True)      title = Column(String, nullable=False)     description = Column(Text)      status = Column(String, default="active")     priority = Column(Float, default=0.5)      created_at = Column(DateTime)     updated_at = Column(DateTime)      completed_at = Column(DateTime, nullable=True)      source = Column(String)   # ---------- CALENDAR EVENTS ----------- class EventRecord(Base):      __tablename__ = "events"      id = Column(String, primary_key=True)      title = Column(String)      start = Column(DateTime)     end = Column(DateTime)   # ------------- REMINDERS -------------- class ReminderRecord(Base):      __tablename__ = "reminders"      id = Column(String, primary_key=True)      title = Column(String)     message = Column(String)      due_at = Column(DateTime)      completed = Column(Boolean)
+            from sqlalchemy.orm import DeclarativeBase from sqlalchemy import Column, String, Float, DateTime, Boolean, Text, Integer, ForeignKey, UUID   class Base(DeclarativeBase):     pass   # ------------ MEMORIES ------------ class EntityRecord(Base):      __tablename__ = "entities"      id = Column(String, primary_key=True)      name = Column(String)     entity_type = Column(String)      aliases: list[str] = []      description: str | None = None      created_at: DateTime   class MemoryRecord(Base):      __tablename__ = "memories"      id = Column(String, primary_key=True)     vector_id = Column(String)      memory_type = Column(String)     content = Column(String)     canonical_content = Column(String, index=True)      confidence = Column(Float)     importance = Column(Float)      source = Column(String)      created_at = Column(DateTime)     last_accessed = Column(DateTime)      access_count = Column(Integer)   class MemoryEdge(Base):      __tablename__ = "memory_edges"      id = Column(String, primary_key=True)      source_identity = Column(String, ForeignKey("entities.id"))     relation = Column(String, index=True)     target_entity = Column(ForeignKey("entities.id"))      confidence = Column(Float, default=1.0)      created_at = Column(DateTime)   class MemoryLineageRecord(Base):     __tablename__ = "memory_lineage"      id = Column(UUID(as_uuid=False), primary_key=True)      child_memory_id = Column(UUID(as_uuid=False), nullable=False)     parent_memory_id = Column(UUID(as_uuid=False), nullable=False)      relationship_type = Column(Text, nullable=False)      created_at = Column(DateTime)   # ------------ MESSAGES ------------ class MessageRecord(Base):      __tablename__ = "messages"      id = Column(String, primary_key=True)     session_id = Column(String)      role = Column(String)      content = Column(String)      timestamp = Column(DateTime)   # ------------ GOALS ------------- class GoalRecord(Base):      __tablename__ = "goals"      id = Column(String, primary_key=True)      title = Column(String, nullable=False)     description = Column(Text)      status = Column(String, default="active")     priority = Column(Float, default=0.5)      created_at = Column(DateTime)     updated_at = Column(DateTime)      completed_at = Column(DateTime, nullable=True)      source = Column(String)   # ---------- CALENDAR EVENTS ----------- class EventRecord(Base):      __tablename__ = "events"      id = Column(String, primary_key=True)      title = Column(String)      start = Column(DateTime)     end = Column(DateTime)   # ------------- REMINDERS -------------- class ReminderRecord(Base):      __tablename__ = "reminders"      id = Column(String, primary_key=True)      title = Column(String)     message = Column(String)      due_at = Column(DateTime)      completed = Column(Boolean)
         postgres.py
             from sqlalchemy import create_engine from sqlalchemy.orm import sessionmaker  from config import settings  engine = create_engine(settings.POSTGRES_URL)  SessionLocal = sessionmaker(     autocommit=False,     autoflush=False,     bind=engine, )
         qdrant.py
@@ -216,7 +205,6 @@ infrastructure
         logger.py
             import logging  logger = logging.getLogger("gideon")
     observability    
-    README.md
 interfaces
     api	
         chat_request.py
@@ -224,7 +212,6 @@ interfaces
         main.py
             from fastapi import FastAPI  from brain.cortex.orchestrator import Orchestrator from interfaces.api.chat_request import ChatRequest  app = FastAPI()  gideon = Orchestrator()   @app.post("/chat") async def chat(payload: ChatRequest):     response = await gideon.process(session_id=payload.session_id, msg=payload.message)     return {"response": response}
     cli	
-    README.md
     vr
     websocket
     ar
@@ -238,7 +225,6 @@ knowledge
     scientific
     domain_modules	
     graph_db	
-    README.md	
     world_model
 language
 learning
@@ -250,7 +236,6 @@ learning
     evaluation
     reinforcement	
     online_learning	
-    README.md
 memory
     long_term_memory
         emotional_memory
@@ -265,18 +250,18 @@ memory
                     import uuid from datetime import datetime, UTC from sqlalchemy import or_  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import MessageRecord   class ConversationService:      async def store_message(self, session_id: str, role: str, content: str):         db = SessionLocal()          try:             db.add(MessageRecord(                 id=str(uuid.uuid4()),                 session_id=session_id,                 role=role,                 content=content,                 timestamp=datetime.now(UTC),             ))              db.commit()                  finally:             db.close()      def get_last_messages(self, session_id: str, limit: int=20):         db = SessionLocal()          try:             rows = db.query(MessageRecord).filter(MessageRecord.session_id == session_id)\                 .order_by(MessageRecord.timestamp.desc()).limit(limit).all()                          return list(reversed(rows))                  finally:             db.close()      def search_conversations(self, query: str, session_id: str | None = None, limit: int = 200):         db = SessionLocal()          try:             terms = [                 t.strip() for t in query.split()                 if len(t.strip()) > 2             ]              q = db.query(MessageRecord)              if session_id:                 q = q.filter(MessageRecord.session_id == session_id)              if terms:                 q = q.filter(or_(*[                     MessageRecord.content.ilike(f"%{term}%")                     for term in terms                 ]))              return q.order_by(MessageRecord.timestamp.desc()).limit(limit).all()          finally:             db.close()
             events
             missions
-            README.md
             timelines
+            episode_model.sql
+                CREATE TABLE episodes (      id UUID PRIMARY KEY,      summary TEXT,      session_id TEXT      start_time TIMESTAMP,     end_time TIMESTAMP,      emotional_weight FLOAT,     importance FLOAT,      embedding_id TEXT,      parent_episode_id UUID,      created_at TIMESTAMP );
         procedural_memory
             actions_sequences
-            README.md
             workflows
             policies
             robotics_skills
         semantic_memory
             concepts
                 memory_extractor.py
-                    import json  from memory.memory_models.memory_type import MemoryType from brain.cortex.orchestrator import parse_json_response  class MemoryExtractor:      def __init__(self, advisor_service, memory_service, graph_memory):         self.advisor = advisor_service         self.memory = memory_service         self.graph_memory = graph_memory       async def extract(self, user_msg: str, gideon_response: str):         prompt = f"""             Extract durable memories only.              Rules:             - Extract durable facts             - Extract user preferences             - Extract goals             - Extract projects             - Extract people             - Extract relationships             - Extract locations             - Extract workflows             - Extract life events             - Extract skills             - Extract important decisions              - Ignore temporary requests             - Ignore greetings             - Ignore conversational fluff             - Ignore small talk              Valid memory_types:                 fact                 preference                 goal                 project                 person                 relationship                 location                 workflow                 life_event                 skill                 decision              Return ONLY JSON.              Example:                 Input:                     "My wife Sarah loves hiking."                  Output:                 {                     "memories": [                         "content": "User is married to Sarah",                         "memory_type": "relationship",                         "importance": 0.9                     ],                      "edges": [                         {                             "source_entity": "user",                             "relation": "married_to",                             "target_entity": "Sarah",                             "confidence": 1.0                         },                         {                             "source_entity": "Sarah",                             "relation": "likes",                             "target_entity": "hiking",                             "confidence": 0.95                         }                     ]                 }              USER:             {user_msg}              GIDEON:             {gideon_response}                  """          try:             results = await self.advisor.ask(                 system_prompt="""                     You are a memory extraction engine.                     Only extract durable memories.                     Return JSON only.                 """,                 prompt=prompt,                 task="extraction"             )              memories = parse_json_response(results)              for m in results["memories"]:                 await self.memory.store(                     content=m["memories"],                     memory_type=m.get("memory_type", MemoryType.FACT),                     source="conversation",                     importance=m.get("importance", 0.5),                 )              for e in results["edges"]:                 await self.graph_memory.add_edge(                     source_entity=e["source_entity"],                     relation=e["relation"],                     target_entity=e["target_entity"],                     confidence=e.get("confidence", 1.0),                 )          except Exception as e:             print(f"[MEMORY_EXTRACTOR] FAILED: {e}")
+                    import json  from memory.memory_models.memory_type import MemoryType from memory.memory_models.provenance import Provenance  from runtime.orchestrator import parse_json_response   class MemoryExtractor:      def __init__(self, advisor_service, memory_service, graph_memory):         self.advisor = advisor_service         self.memory = memory_service         self.graph_memory = graph_memory       async def extract(self, user_msg: str, gideon_response: str, message_id, episode_id):         prompt = f"""             Extract durable memories only.              Rules:             - Extract durable facts             - Extract user preferences             - Extract goals             - Extract projects             - Extract people             - Extract relationships             - Extract locations             - Extract workflows             - Extract life events             - Extract skills             - Extract important decisions              - Ignore temporary requests             - Ignore greetings             - Ignore conversational fluff             - Ignore small talk              Valid memory_types:                 fact                 preference                 goal                 project                 person                 relationship                 location                 workflow                 life_event                 skill                 decision              Return ONLY JSON.              Example:                 Input:                     "My wife Sarah loves hiking."                  Output:                 {                     "memories": [                         "content": "User is married to Sarah",                         "memory_type": "relationship",                         "importance": 0.9                     ],                      "edges": [                         {                             "source_entity": "user",                             "relation": "married_to",                             "target_entity": "Sarah",                             "confidence": 1.0                         },                         {                             "source_entity": "Sarah",                             "relation": "likes",                             "target_entity": "hiking",                             "confidence": 0.95                         }                     ]                 }              USER:             {user_msg}              GIDEON:             {gideon_response}                  """          try:             results = await self.advisor.ask(                 system_prompt="""                     You are a memory extraction engine.                     Only extract durable memories.                     Return JSON only.                 """,                 prompt=prompt,                 task="extraction"             )              results = parse_json_response(results)              for m in results["memories"]:                 await self.memory.store(                     content=m["content"],                     memory_type=m.get("memory_type", MemoryType.FACT),                     source="conversation",                     importance=m.get("importance", 0.5),                      provenance=Provenance(                         message_id=message_id,                         episode_id=episode_id,                         source_type="conversation"                     )                 )              for e in results["edges"]:                 await self.graph_memory.add_edge(                     source_entity=e["source_entity"],                     relation=e["relation"],                     target_entity=e["target_entity"],                     confidence=e.get("confidence", 1.0),                 )          except Exception as e:             print(f"[MEMORY_EXTRACTOR] FAILED: {e}")
             embeddings
                 embedding_service.py
                     from openai import AsyncOpenAI from config import settings  client = AsyncOpenAI(api_key=settings.OPEN_API_KEY)   class EmbeddingService:      async def embed(self, text: str):         response = await client.embeddings.create(model="text-embedding-3-small", input=text)          return response.data[0].embedding
@@ -287,10 +272,13 @@ memory
                     class MemoryCanonicalizer:      def __init__(self, advisor_service):         self.advisor = advisor_service      async def canonicalize(self, content: str, memory_type: str):         prompt = f"""             Convert this memory into a canonical form.              Rules:             - Normalize wording.             - Use third person.             - Preserve meaning.             - Output only ONE sentence.             - Output only the canonical memory.                           Examples:              Memory Type: preference             Input: I love coffee             Output: User likes coffee              Memory Type: preference             Input: Coffee is my favorite drink             Output: User likes coffee              Memory Type: preference             Input: I drink coffee every day             Output: User likes coffee              Memory Type: goal             Input: I want to build an AI OS             Output: User wants to build an AI operating system              Memory Type: project             Input: I'm working on Gideon             Output: User is working on the Gideon project                           Memory Type:             {memory_type}              Input:             {content}         """          result = await self.advisor.ask(             task="summarization",             prompt=prompt,         )          return result.strip()
                 entity_service.py
                     import uuid  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import EntityRecord   class EntityService:      async def get_or_create(self, name: str, entity_type: str):         db = SessionLocal()          try:             entity = db.query(EntityRecord).filter(EntityRecord.name == name).first()             if entity:                 return entity                          entity = EntityRecord(                 id=str(uuid.uuid4()),                 name=name,                 entity_type=entity_type,             )              db.add(entity)             db.commit()              return entity                  finally:             db.close()
-            README.md
         sensory_memory
-            README.md
     memory_models
+        basic_memory
+            memory.py
+                from pydantic import BaseModel, Field from datetime import datetime, UTC  from memory.memory_models.provenance import Provenance   class Memory(BaseModel):      id: str      memory_type: str     content: str      confidence: float = 1.0     source: str          provenance: Provenance | None = None      embedding: list[float] | None = None      created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+            memory_table.sql
+                CREATE TABLE memories (     id UUID PRIMARY KEY,      vector_id TEXT,      memory_type TEXT,      content TEXT,     canonical_content TEXT,      confidence FLOAT,     importance FLOAT DEFAULT 0.5,      source TEXT,          last_accessed TIMESTAMP,     access_count INTEGER DEFAULT 0,      -- provenance (origins for traceablity)     origin_message_id UUID,     origin_episode_id UUID,     origin_memory_id UUID,      root_memory_id UUID,      created_at TIMESTAMP );  CREATE INDEX idx_memories_canonical ON memories(canonical_content);
         entities
             entity_model.py
                 from pydantic import BaseModel from datetime import datetime   class Entity(BaseModel):      id: str      name: str     entity_type: str      aliases: list[str] = []      descriptions: str | None = None      created_at: datetime     updated_at: datetime
@@ -298,21 +286,30 @@ memory
                 CREATE TABLE entities (     id UUID PRIMARY KEY,      name TEXT NOT NULL,     entity_type TEXT NOT NULL,      aliases JSONB,      description TEXT,      created_at TIMESTAMP,     updated_at TIMESTAMP, );  CREATE INDEX idx_entities_name ON entities(name);  CREATE INDEX idx_entities_type ON entities(entity_type);
             entity_types.py
                 from enum import Enum   class EntityType(str, Enum):      PERSON          = "person"     PROJECT         = "project"     GOAL            = "goal"     LOCATION        = "location"     ORGANIZATION    = "organization"     SKILL           = "skill"     TOOL            = "tool"     SYSTEM          = "system"     TASK            = "task"     CONCEPT         = "concept"     EVENT           = "event"
+        lineage
+            lineage_model.py
+                from datetime import datetime, UTC from pydantic import BaseModel, Field   class MemoryLineage(BaseModel):      id: str      child_memory_id: str     parent_memory_id: str      relationship_type: str      created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+            memory_lineage_table.sql
+                CREATE TABLE memory_lineage (     id UUID PRIMARY KEY,      child_memory_id UUID NOT NULL,     parent_memory_id UUID NOT NULL,      relationship_type TEXT NOT NULL,      created_at TIMESTAMP, )
         fact.py
             from datetime import datetime   class Fact:      statement: str      confidence: float     evidence: list[str] = []      contradictions: list[str] = []     source: str      stability: float = 1.0      created_at: datetime     last_reviewed: datetime
         memory_edges.sql
             CREATE TABLE memory_edges (     id UUID PRIMARY KEY,      source_entity TEXT,     relation TEXT,     target_entity TEXT,      confidence FLOAT DEFAULT 1.0,      created_at TIMESTAMP );  CREATE INDEX idx_edges_source ON memory_edges(source_entity);  CREATE INDEX idx_edges_relation ON memory_edges(relation)  CREATE INDEX idx_edges_target ON memory_edges(target_entity)
+        memory_evidence_table.sql
+            CREATE TABLE memory_evidence (     id UUID PRIMARY KEY,      memory_id UUID NOT NULL,      message_id UUID,     episode_id UUID,      confidence FLOAT,      created_at TIMESTAMP );
         memory_models.sql
             CREATE TABLE conversations (     id UUID PRIMARY KEY,     session_id TEXT,     role TEXT,     content TEXT,     created_at TIMESTAMP );  CREATE TABLE facts (     id UUID PRIMARY KEY,     fact TEXT,     confidence FLOAT,     source TEXT,     created_at TIMESTAMP, );  CREATE TABLE preferences (     id UUID PRIMARY KEY,     key TEXT,     value TEXT, )
-        memory_table.sql
-            CREATE TABLE memories (     id UUID PRIMARY KEY,     vector_id TEXT,      memory_type TEXT,     content TEXT,     canonical_content TEXT,      confidence FLOAT,     source TEXT,          created_at TIMESTAMP     last_accessed TIMESTAMP,      access_count INTEGER DEFAULT 0 );  CREATE INDEX idx_memories_canonical ON memories(canonical_content);
         memory_type.py
-            CREATE TABLE memory_edges (     id UUID PRIMARY KEY,      source_entity UUID REFERENCES entities(id),     relation TEXT,     target_entity UUID REFERENCES entities(id),      confidence FLOAT,      created_at TIMESTAMP );  CREATE INDEX idx_edges_source ON memory_edges(source_entity);  CREATE INDEX idx_edges_relation ON memory_edges(relation)  CREATE INDEX idx_edges_target ON memory_edges(target_entity)
-        memory.py
-            from pydantic import BaseModel, Field from datetime import datetime, UTC   class Memory(BaseModel):      id: str      memory_type: str     content: str      confidence: float = 1.0      source: str          created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))      embedding: list[float] | None = None
+            from enum import Enum   class MemoryType(str, Enum):      # SEMANTIC     FACT            = "fact"     CONCEPT         = "concept"          # USER MODEL     PREFERENCE      = "preference"     VALUE           = "value"     BELIEF          = "belief"      # PLANNING     GOAL            = "goal"     PROJECT         = "project"     TASK            = "task"     DECISION        = "decision"      # SOCIAL     PERSON          = "person"     RELATIONSHIP    = "relationship"     ORGANIZATION    = "organization"     LOCATION        = "location"      # EXPERIENCE     EPISODE         = "episode"     LIFE_EVENT      = "life_event"      # SKILLS     SKILL           = "skill"     PROCEDURE       = "procedure"      # SYSTEM     WORKFLOW        = "workflow"         REFLECTION      = "reflection"     POLICY          = "policy"
+        provenance.py
+            from pydantic import BaseModel   class Provenance(BaseModel):      message_id: str | None = None     episode_id: str | None = None      parent_memory_id: str | None = None     root_memory_id: str | None = None      source_type: str | None = None
     storage
-        graph_memory.py
-            import uuid  from datetime import datetime, UTC  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import MemoryEdge   class GraphMemoryService:      async def add_edge(self, source_entity: str, relation: str, target_entity: str, confidence: float=1.0):         db = SessionLocal()          try:             edge = MemoryEdge(                 id=str(uuid.uuid4()),                 source_entity=source_entity,                 relation=relation,                 target_entity=target_entity,                 confidence=confidence,                 created_at=datetime.now(UTC),             )              db.add(edge)             db.commit()              return edge          finally:             db.close()           async def get_edges(self, entity: str):         db = SessionLocal()          try:             return db.query(MemoryEdge).filter((MemoryEdge.source_identity == entity) | (MemoryEdge.target_entity == entity)).all()                  finally:             db.close()       async def find_relation(self, source_entity, relation):         db = SessionLocal()          try:             return db.query(MemoryEdge).filter(                 MemoryEdge.source_identity == source_entity,                  MemoryEdge.relation == relation,             ).first()          finally:             db.close()
+        lineage
+            lineage_service.py
+                import uuid  from datetime import datetime, UTC  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import MemoryLineageRecord   class LineageService:      async def add_link(self, child_memory_id: str, parent_memory_id: str, relationship_type: str):         db = SessionLocal()          try:             existing = db.query(MemoryLineageRecord).filter(                 MemoryLineageRecord.child_memory_id == child_memory_id,                 MemoryLineageRecord.parent_memory_id == parent_memory_id,                 MemoryLineageRecord.relationship_type == relationship_type,             ).first()              if existing:                 return existing                           link = MemoryLineageRecord(                 id=str(uuid.uuid4()),                 child_memory_id=child_memory_id,                 parent_memory_id=parent_memory_id,                 relationship_type=relationship_type,                 created_at=datetime.now(UTC),             )              db.add(link)             db.commit()              return link                  except Exception:             db.rollback()             raise          finally:             db.close()
+        graph_memory
+            graph_service.py
+                import uuid  from datetime import datetime, UTC  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import MemoryEdge   class GraphMemoryService:      async def add_edge(self, source_entity: str, relation: str, target_entity: str, confidence: float=1.0):         db = SessionLocal()          try:             edge = MemoryEdge(                 id=str(uuid.uuid4()),                 source_entity=source_entity,                 relation=relation,                 target_entity=target_entity,                 confidence=confidence,                 created_at=datetime.now(UTC),             )              db.add(edge)             db.commit()              return edge          finally:             db.close()           async def get_edges(self, entity: str):         db = SessionLocal()          try:             return db.query(MemoryEdge).filter((MemoryEdge.source_identity == entity) | (MemoryEdge.target_entity == entity)).all()                  finally:             db.close()       async def find_relation(self, source_entity, relation):         db = SessionLocal()          try:             return db.query(MemoryEdge).filter(                 MemoryEdge.source_identity == source_entity,                  MemoryEdge.relation == relation,             ).first()          finally:             db.close()
         memory_indexing
         symbolic_memory
         vector_memory
@@ -323,10 +320,8 @@ memory
         active_dialogue	
         scratchpads	
         temporary_goals
-        README.md
-    README.md
     memory_service.py
-        import uuid from datetime import datetime, UTC from math import log  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import MemoryRecord  from runtime.services.llm_service import LLMService  from memory.long_term_memory.semantic_memory.embeddings.embedding_service import EmbeddingService from memory.storage.vector_memory.vector_memory_service import VectorMemoryService from memory.memory_models.memory_type import MemoryType from memory.long_term_memory.semantic_memory.relations.canonicalizer import MemoryCanonicalizer   # Typical values: 0.70 = loose; 0.75 = balanced; 0.80 = strict; 0.85 = very strict SIMILARITY_THRESHOLD = 0.78  def rank(memory):     recency = (datetime.now(UTC) - memory.created_at).days     recency_score = 1 / (1 + recency)      return (         memory.importance * 0.30 +         memory.confidence * 0.40 +         recency_score * 0.10 +         log(memory.access_count + 1) * 0.20     )  class MemoryService:      def __init__(self):         self.embedder = EmbeddingService()         self.vector_service = VectorMemoryService()         self.canonicalizer = MemoryCanonicalizer(llm=LLMService())           def reinforce(confidence):         return confidence + (1.0 - confidence) * 0.15       async def store(self, content: str, memory_type: str=MemoryType.FACT, source: str="user", importance: float=0.5):         db = SessionLocal()          try:             # memory deduplication             canonical_content = await self.canonicalizer.canonicalize(content=content, memory_type=str(memory_type))              existing = db.query(MemoryRecord).filter(MemoryRecord.canonical_content == canonical_content).first()             if existing:                 existing.confidence = self.reinforce(existing.confidence)                  existing.last_accessed = datetime.now(UTC)                 existing.access_count += 1                                  db.commit()                  return existing.id              memory_id = str(uuid.uuid4())              embedding = await self.embedder.embed(canonical_content)              record = MemoryRecord(                 id=memory_id,                 vector_id=memory_id,                  memory_type=memory_type,                 content=content,                 canonical_content=canonical_content,                  confidence=1.0,                 importance=importance,                                  source=source,                                  created_at=datetime.now(UTC),                 last_accessed=datetime.now(UTC),                                  access_count=0,             )              db.add(record)             db.commit()              await self.vector_service.store(                 memory_id=memory_id,                  embedding=embedding,                 memory_type=memory_type,                 source=source,             )              return memory_id                  except Exception:             db.rollback()             raise          finally:             db.close()       async def search(self, query: str, memory_types: list=None, limit: int=10):         db = SessionLocal()          try:             embedding = await self.embedder.embed(query)              # --------- VECTOR SEARCH ---------             vector_results = await self.vector_service.search(embedding=embedding, limit=limit*2)              vector_results = [                 r for r in vector_results                 if r.score > SIMILARITY_THRESHOLD             ]              vector_ids = [r.payload["memory_id"] for r in vector_results]              vector_memories = []              if vector_ids:                 vector_memories = db.query(MemoryRecord).filter(MemoryRecord.id.in_(vector_ids)).all()                           # ---------- KEYWORD SEARCH ----------             keyword_results = await self.keyword_search(db=db, query=query, memory_types=memory_types, limit=limit*2)               # ----------- MERGE + DEDUPE ----------             memory_map = {}              for memory in vector_memories:                 memory_map[memory.id] = memory              for memory in keyword_results:                 memory_map[memory.id] = memory              memories = list(memory_map.values())               # ----------- FILTER TYPES -----------             if memory_types:                 memories = [                     m for m in memories                     if m.memory_type in memory_types                 ]              # --------- UPDATE ACCESS STATS --------             for memory in memory_map.values():                 memory.last_accessed = datetime.now(UTC)                 memory.access_count += 1              db.commit()              # ------------- RANK --------------             memories.sort(                 key=rank,                 reverse=True,             )              return memories[:limit]                  finally:             db.close()           def keyword_search(self, db, query: str, memory_types: list | None, limit: int):         q = db.query(MemoryRecord).filter(MemoryRecord.content.ilike(f"%{query}%"))                  if memory_types:             q = q.filter(MemoryRecord.memory_type.in_(memory_types))          return q.limit(limit).all()
+        import uuid from datetime import datetime, UTC from math import log  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import MemoryRecord  from runtime.services.llm_service import LLMService  from memory.long_term_memory.semantic_memory.embeddings.embedding_service import EmbeddingService from memory.storage.vector_memory.vector_memory_service import VectorMemoryService from memory.memory_models.memory_type import MemoryType from memory.long_term_memory.semantic_memory.relations.canonicalizer import MemoryCanonicalizer from memory.storage.lineage.lineage_service import LineageService from memory.memory_models.provenance import Provenance  # Typical values: 0.70 = loose; 0.75 = balanced; 0.80 = strict; 0.85 = very strict SIMILARITY_THRESHOLD = 0.78  def rank(memory):     recency = (datetime.now(UTC) - memory.created_at).days     recency_score = 1 / (1 + recency)      return (         memory.importance * 0.30 +         memory.confidence * 0.40 +         recency_score * 0.10 +         log(memory.access_count + 1) * 0.20     )  class MemoryService:      def __init__(self):         self.embedder = EmbeddingService()         self.vector_service = VectorMemoryService()         self.canonicalizer = MemoryCanonicalizer(llm=LLMService())         self.lineage = LineageService()           def reinforce(confidence):         return confidence + (1.0 - confidence) * 0.15       async def store(self, content: str, provenance: Provenance | None = None, memory_type: str=MemoryType.FACT, source: str="user", importance: float=0.5):         db = SessionLocal()          try:             # memory deduplication             canonical_content = await self.canonicalizer.canonicalize(content=content, memory_type=str(memory_type))              existing = db.query(MemoryRecord).filter(MemoryRecord.canonical_content == canonical_content).first()             if existing:                 existing.confidence = self.reinforce(existing.confidence)                  existing.last_accessed = datetime.now(UTC)                 existing.access_count += 1                                  db.commit()                  return existing.id              memory_id = str(uuid.uuid4())              embedding = await self.embedder.embed(canonical_content)              if provenance:                 await self.lineage.add_link(                     child_memory_id=memory_id,                     parent_memory_id=provenance.parent_memory_id,                     relationship_type="derived_from"                 )              record = MemoryRecord(                 id=memory_id,                 vector_id=memory_id,                  memory_type=memory_type,                 content=content,                 canonical_content=canonical_content,                  confidence=1.0,                 importance=importance,                                  source=source,                                  last_accessed=datetime.now(UTC),                 access_count=0,                  provenance=provenance,                                  created_at=datetime.now(UTC),             )              db.add(record)             db.commit()              await self.vector_service.store(                 memory_id=memory_id,                  embedding=embedding,                 memory_type=memory_type,                 source=source,             )              return memory_id                  except Exception:             db.rollback()             raise          finally:             db.close()       async def search(self, query: str, memory_types: list=None, limit: int=10):         db = SessionLocal()          try:             embedding = await self.embedder.embed(query)              # --------- VECTOR SEARCH ---------             vector_results = await self.vector_service.search(embedding=embedding, limit=limit*2)              vector_results = [                 r for r in vector_results                 if r.score > SIMILARITY_THRESHOLD             ]              vector_ids = [r.payload["memory_id"] for r in vector_results]              vector_memories = []              if vector_ids:                 vector_memories = db.query(MemoryRecord).filter(MemoryRecord.id.in_(vector_ids)).all()                           # ---------- KEYWORD SEARCH ----------             keyword_results = await self.keyword_search(db=db, query=query, memory_types=memory_types, limit=limit*2)               # ----------- MERGE + DEDUPE ----------             memory_map = {}              for memory in vector_memories:                 memory_map[memory.id] = memory              for memory in keyword_results:                 memory_map[memory.id] = memory              memories = list(memory_map.values())               # ----------- FILTER TYPES -----------             if memory_types:                 memories = [                     m for m in memories                     if m.memory_type in memory_types                 ]              # --------- UPDATE ACCESS STATS --------             for memory in memory_map.values():                 memory.last_accessed = datetime.now(UTC)                 memory.access_count += 1              db.commit()              # ------------- RANK --------------             memories.sort(                 key=rank,                 reverse=True,             )              return memories[:limit]                  finally:             db.close()           def keyword_search(self, db, query: str, memory_types: list | None, limit: int):         q = db.query(MemoryRecord).filter(MemoryRecord.content.ilike(f"%{query}%"))                  if memory_types:             q = q.filter(MemoryRecord.memory_type.in_(memory_types))          return q.limit(limit).all()
 mind
     beliefs
         belief_model.py
@@ -335,6 +330,8 @@ mind
             from datetime import datetime, UTC  from mind.beliefs.belief_model import Belief from mind.beliefs.belief_store import BeliefStore   class BeliefService:      def __init__(self):         self.store = BeliefStore()         self.beliefs = self.store.load()       def all(self):         return self.beliefs           def add(self, statement: str, domain: str, source: str, confidence: float=0.5, evidence: list[str] | None = None):         belief = Belief(             statement=statement,              domain=domain,             source=source,             confidence=confidence,              evidence=evidence or []         )          self.beliefs.append(belief)         self.store.save(self.beliefs)          return belief           def find(self, statement: str):         for belief in self.beliefs:             if belief.statement == statement:                 return belief                      return None           def reinforce(self, statement: str, evidence: str, delta: float=0.05):         belief = self.find(statement=statement)         if not belief:             return None                  belief.confidence = min(1.0, belief.confidence + delta)         belief.evidence.append(evidence)         belief.last_reviewed = datetime.now(UTC)          self.store.save(self.beliefs)          return belief           def contradict(self, statement: str, contradiction: str, delta: float=1.0):         belief = self.find(statement=statement)         if not belief:             return None                  belief.confidence = max(0.0, belief.confidence - delta)         belief.contradictions.append(contradiction)         belief.last_reviewed = datetime.now(UTC)          self.store.save(self.beliefs)          return belief
         belief_store.py
             import json from pathlib import Path  from mind.beliefs.belief_model import Belief   class BeliefStore:      def __init__(self):         self.path = Path(__file__).parent / "beliefs.json"          if not self.path.exists():             self.path.write_text("[]")       def load(self) -> list[Belief]:         data = json.loads(self.path.read_text())         return [Belief(**item) for item in data]       def save(self, beliefs: list[Belief]):         self.path.write_text(json.dumps(             [b.model_dump(mode="json") for b in beliefs],             indent=2,         ))
+        belief_table.sql
+            CREATE TABLE beliefs (      id UUID PRIMARY KEY,      statement TEXT,      confidence FLOAT,     stability FLOAT,      domain TEXT,     source TEXT,      evidence JSONB,     contradictions JSONB,      last_reviewed TIMESTAMP,          created_at TIMESTAMP );
     experiences
         experience_model.py
             from pydantic import BaseModel, Field from datetime import datetime, UTC   class Experience(BaseModel):      title: str     summary: str     outcome: str      lessons: list[str] = Field(default_factory=list)      confidence: float      timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -356,12 +353,10 @@ mind
             from mind.identity.identity_service import IdentityService from mind.beliefs.belief_service import BeliefService from mind.experiences.experience_service import ExperienceService  from mind.self_model.self_model import SelfModel   class SelfModelService:      def __init__(self):         self.identity = IdentityService()         self.beliefs = BeliefService()         self.experiences = ExperienceService()       def snapshot(self):         return SelfModel(             identity=self.identity.identity,             beliefs=self.beliefs.all(),             experiences=self.experiences.all(),         )
         self_model.py
             from pydantic import BaseModel  from mind.beliefs.belief_model import Belief from mind.experiences.experience_model import Experience   class SelfModel(BaseModel):      identity: dict      beliefs: list[Belief] = []      experiences: list[Experience] = []
-    README.md
 nervous_system
     central
     signal_bus
         publishers
-        README.md
         routing
             advisor_router.py
                 class AdvisorRouter:      TASK_ADVISORS = {         "reasoning":        "gpt",         "planning":         "gpt",         "coding":           "gpt",         "memory":           "gpt",         "summarization":    "gpt",         "tool_use":         "gpt",         "vision":           "gpt",         "critic":           "gpt",         "extraction":       "gpt",     }      def choose(self, task: str) -> str:         return self.TASK_MODELS.get(task, "gpt")
@@ -369,7 +364,6 @@ nervous_system
                 from actions.tools.tool_application.tool_service import ToolService   class ToolRouter:      def __init__(self):         self.tool_service = ToolService()         self.routes = self.tool_service.get_func_map()       async def execute_tool(self, name: str, args: dict):         tool_func = self.routes.get(name)          if not tool_func:             raise ValueError(f"Unknown tool: {name}")          return await tool_func(**args)
         schemas
         subscribers
-    README.md
     peripheral
     event_streams
     autonomic
@@ -381,7 +375,6 @@ nervous_system
         failover
         process_supervision
         health_monitoring
-        README.md
 research
 runtime
     agents
@@ -448,13 +441,11 @@ senses
     internal_state
     proprioception
     telemetry
-    README.md
 simulation
     adversial_tests
     physics	
     training_worlds
     digital_twins
-    README.md
     environments
     scenario_generation
 subconscious
@@ -464,7 +455,6 @@ subconscious
             import json from datetime import datetime, UTC, timedelta  from infrastructure.databases.postgres import SessionLocal from infrastructure.databases.postgres_models import MessageRecord  from runtime.services.advisor_service import AdvisorService from memory.memory_service import MemoryService   class MemoryConsolidator:      def __init__(self):         self.advisor = AdvisorService()         self.memory = MemoryService()       async def consolidate(self):         db = SessionLocal()          try:             cutoff = datetime.now(UTC) - timedelta(days=1)              messages = db.query(MessageRecord).filter(MessageRecord.timestamp < cutoff)\                 .order_by(MessageRecord.timestamp.asc()).all()              if not messages:                 return                          transcript = "\n".join([                 f"{m.role}: {m.content}" for m in messages             ])              summaries = await self._extract_episodic_memories(transcript)              for memory in summaries:                 await self.memory.store(                     content=memory["content"],                     memory_type=memory["memory_type"],                     source="memory_consolidator",                     importance=memory["importance"],                 )              self._delete_redundant_messages(db, messages)              db.commit()          except Exception:             db.rollback()             raise          finally:             db.close()       async def _extract_episodic_memories(self, transcript: str):         prompt = f"""             You are a memory consolidation engine.              Convert conversation fragments into long-term episodic memories.              Rules:             - Merge duplicates             - Remove conversational fluff             - Focus on projects, goals, preferences, decision, skills, and important events             - Produce only durable memories              Use these categories as memory_types:                 "fact", "preference", "goal", "project", "person", "conversation", "task", "decision", "skill", "system"              Return ONLY JSON:             [                 {{                     "content": "User is actively developing Project A and recently completed memory system implementation.",                     "memory_type": "project",                     "importance": 0.8                 }}             ]              Conversation:              {transcript}         """          result = await self.advisor.ask(             system_prompt="""                 You are performing memory consolidation.                  Convert conversations into durable memories that produce valuable insights.                 Return JSON only.             """,             prompt=prompt,             task="summarization",         )          return json.loads(result)       def _delete_redundant_messages(self, db, messages):         ids = [m.id for m in messages]          db.query(MessageRecord).filter(MessageRecord.id.in_(ids)).delete(synchronize_session=False)
         nighly_memory_job.py
             from subconscious.memory_consolidation.memory_consolidator import MemoryConsolidator  async def run():     consolidator = MemoryConsolidator()      await consolidator.consolidate()
-    README.md
     dream_simulation
     optimization
     indexing

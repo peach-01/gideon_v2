@@ -1,20 +1,30 @@
 CREATE TABLE memory_edges (
+
     id UUID PRIMARY KEY,
 
-    source_entity UUID REFERENCES entities(id),
-    relation TEXT,
-    target_entity UUID REFERENCES entities(id),
+    source_entity_id UUID NOT NULL,
+    target_entity_id UUID NOT NULL,
 
-    confidence FLOAT,
+    relation TEXT NOT NULL,
 
-    created_at TIMESTAMP
+    confidence FLOAT DEFAULT 1.0,
+
+    origin_episode_id UUID,
+
+    created_at TIMESTAMP,
+
+    CONSTRAINT uq_source_id
+    UNIQUE(source_entity_id),
+
+    CONSTRAINT uq_target_id
+    UNIQUE(target_entity_id)
 );
 
 CREATE INDEX idx_edges_source
-ON memory_edges(source_entity);
-
-CREATE INDEX idx_edges_relation
-ON memory_edges(relation)
+ON memory_edges(source_entity_id);
 
 CREATE INDEX idx_edges_target
-ON memory_edges(target_entity)
+ON memory_edges(target_entity_id);
+
+CREATE INDEX idx_edges_relation
+ON memory_edges(relation);

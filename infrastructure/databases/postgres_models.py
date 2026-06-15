@@ -1,6 +1,6 @@
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import Column, String, Float, DateTime, Boolean, Text, Integer, ForeignKey
-
+from sqlalchemy import Column, String, Float, DateTime, Boolean, Text, Integer, ForeignKey, UUID
+from sqlalchemy.dialects.postgresql import JSONB
 
 class Base(DeclarativeBase):
     pass
@@ -16,11 +16,12 @@ class EntityRecord(Base):
     name = Column(String)
     entity_type = Column(String)
 
-    aliases: list[str] = []
+    aliases = Column(JSONB)
 
-    description: str | None = None
+    description = Column(Text)
 
-    created_at: DateTime
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
 
 
 class MemoryRecord(Base):
@@ -51,11 +52,25 @@ class MemoryEdge(Base):
 
     id = Column(String, primary_key=True)
 
-    source_identity = Column(String, ForeignKey("entities.id"))
+    source_entity_id = Column(String, ForeignKey("entities.id"))
+    target_entity_id = Column(String, ForeignKey("entities.id"))
+
     relation = Column(String, index=True)
-    target_entity = Column(ForeignKey("entities.id"))
 
     confidence = Column(Float, default=1.0)
+
+    created_at = Column(DateTime)
+
+
+class MemoryLineageRecord(Base):
+    __tablename__ = "memory_lineage"
+
+    id = Column(UUID(as_uuid=False), primary_key=True)
+
+    child_memory_id = Column(UUID(as_uuid=False), nullable=False)
+    parent_memory_id = Column(UUID(as_uuid=False), nullable=False)
+
+    relationship_type = Column(Text, nullable=False)
 
     created_at = Column(DateTime)
 

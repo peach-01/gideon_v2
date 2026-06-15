@@ -9,7 +9,7 @@ CREATE TABLE entities (
     description TEXT,
 
     created_at TIMESTAMP,
-    updated_at TIMESTAMP,
+    updated_at TIMESTAMP
 );
 
 CREATE INDEX idx_entities_name

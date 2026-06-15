@@ -12,8 +12,10 @@ class ConversationService:
         db = SessionLocal()
 
         try:
+            message_id = str(uuid.uuid4())
+
             db.add(MessageRecord(
-                id=str(uuid.uuid4()),
+                id=message_id,
                 session_id=session_id,
                 role=role,
                 content=content,
@@ -24,6 +26,9 @@ class ConversationService:
         
         finally:
             db.close()
+
+        return message_id
+    
 
     def get_last_messages(self, session_id: str, limit: int=20):
         db = SessionLocal()

@@ -6,6 +6,8 @@ from runtime.services.advisor_service import AdvisorService
 from memory.memory_service import MemoryService
 from memory.long_term_memory.episodic_memory.conversations.converstation_service import ConversationService
 from memory.long_term_memory.semantic_memory.concepts.memory_extractor import MemoryExtractor
+from memory.long_term_memory.episodic_memory.episode_service import EpisodeService
+from memory.storage.graph_memory.graph_service import GraphMemoryService
 
 from brain.cortex.workspace.state_extractor import StateExtractor
 from brain.cortex.workspace.state_manager_service import StateManager
@@ -39,12 +41,15 @@ class Orchestrator:
         self.conversation = ConversationService()
         self.tool_executor = ToolExecutor()
         self.state_manager = StateManager()
+        self.graph_memory = GraphMemoryService()
 
         self.self_model = SelfModelService()
         self.self_model_formatter = SelfModelFormatter()
 
+        self.episode_service = EpisodeService(self.advisor)
+
         self.context_builder = ContextBuilder(self.memory, self.conversation, self.state_manager)
-        self.memory_extractor = MemoryExtractor(self.advisor, self.memory)
+        self.memory_extractor = MemoryExtractor(self.advisor, self.memory, self.graph_memory)
         self.state_extractor = StateExtractor(self.advisor)
 
 
@@ -55,7 +60,7 @@ class Orchestrator:
         """
         
         # STEP 1: STORE USER MSG
-        await self.conversation.store_message(
+        user_message_id = await self.conversation.store_message(
             session_id=session_id,
             role="user",
             content=msg,
@@ -117,8 +122,10 @@ class Orchestrator:
             content=answer,
         )
 
-        # STEP 5: MEMORY EXTRACTION
-        await self.memory_extractor.extract(user_msg=msg, gideon_response=answer)
+        # STEP 5: EPISODIC MEMORY EXTRACTION
+        episode = await self.episode_service.create_episode(session_id=session_id, messages=messages)
+
+        await self.memory_extractor.extract(user_msg=msg, gideon_response=answer, message_id=user_message_id, episode_id=episode.id)
 
         # STEP 6: UPDATE STATE
         state = self.state_manager.get_state(session_id=session_id)

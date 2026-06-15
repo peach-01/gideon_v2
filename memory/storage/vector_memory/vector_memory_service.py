@@ -14,7 +14,7 @@ class VectorMemoryService:
             collection_name=self.COLLECTION,
             points=[
                 PointStruct(
-                    id=memory_id,
+                    id=str(uuid.uuid4(memory_id)),
                     vector=embedding,
                     payload={
                         "memory_id": memory_id,

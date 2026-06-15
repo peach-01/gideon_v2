@@ -1,7 +1,10 @@
 import json
 
 from memory.memory_models.memory_type import MemoryType
+from memory.memory_models.provenance import Provenance
+
 from runtime.orchestrator import parse_json_response
+
 
 class MemoryExtractor:
 
@@ -11,7 +14,7 @@ class MemoryExtractor:
         self.graph_memory = graph_memory
 
 
-    async def extract(self, user_msg: str, gideon_response: str):
+    async def extract(self, user_msg: str, gideon_response: str, message_id, episode_id):
         prompt = f"""
             Extract durable memories only.
 
@@ -94,14 +97,20 @@ class MemoryExtractor:
                 task="extraction"
             )
 
-            memories = parse_json_response(results)
+            results = parse_json_response(results)
 
             for m in results["memories"]:
                 await self.memory.store(
-                    content=m["memories"],
+                    content=m["content"],
                     memory_type=m.get("memory_type", MemoryType.FACT),
                     source="conversation",
                     importance=m.get("importance", 0.5),
+
+                    provenance = Provenance(
+                        message_id=message_id,
+                        episode_id=episode_id,
+                        source_type="conversation"
+                    )
                 )
 
             for e in results["edges"]:

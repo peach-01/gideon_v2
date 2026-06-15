@@ -3,19 +3,36 @@ from enum import Enum
 
 class MemoryType(str, Enum):
 
+    # SEMANTIC
     FACT            = "fact"
+    CONCEPT         = "concept"
+    
+    # USER MODEL
     PREFERENCE      = "preference"
+    VALUE           = "value"
+    BELIEF          = "belief"
+
+    # PLANNING
     GOAL            = "goal"
     PROJECT         = "project"
-
-    PERSON          = "person"
-    RELATIONSHIP    = "relationship"
-    LOCATION        = "location"
-    WORKFLOW        = "workflow"
-    LIFE_EVENT      = "life_event"
-
-    CONVERSATION    = "conversation"
     TASK            = "task"
     DECISION        = "decision"
+
+    # SOCIAL
+    PERSON          = "person"
+    RELATIONSHIP    = "relationship"
+    ORGANIZATION    = "organization"
+    LOCATION        = "location"
+
+    # EXPERIENCE
+    EPISODE         = "episode"
+    LIFE_EVENT      = "life_event"
+
+    # SKILLS
     SKILL           = "skill"
-    SYSTEM          = "system"
+    PROCEDURE       = "procedure"
+
+    # SYSTEM
+    WORKFLOW        = "workflow"    
+    REFLECTION      = "reflection"
+    POLICY          = "policy"
