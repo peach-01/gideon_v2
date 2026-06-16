@@ -9,6 +9,8 @@ class Memory(BaseModel):
     id: str
 
     memory_type: str
+    memory_tier: str
+
     content: str
 
     confidence: float = 1.0
@@ -16,6 +18,8 @@ class Memory(BaseModel):
     stability: float = 1.0
 
     source: str
+
+    metadata: dict = Field(default_factory=dict)
     
     provenance: Provenance | None = None
 

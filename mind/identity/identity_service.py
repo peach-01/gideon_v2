@@ -25,32 +25,3 @@ class IdentityService:
     @property
     def mission(self):
         return self.identity["mission"]
-    
-    def get_peronality(self):
-        return self.identity.get("personality", {})
-
-    def get_values(self):
-        return self.identity.get("values", {})
-
-    def get_behavioral_policies(self):
-        return self.identity.get("behavioral_policies", {})
-
-    def get_advisor_preferences(self):
-        return self.identity.get("advisor_preferences", {})
-
-    def get_operating_modes(self):
-        return self.identity.get("operating_modes", {})
-    
-
-    def update_value(self, path: list[str], value):
-        node = self.identity
-
-        for key in path[:-1]:
-            node = node[key]
-
-        node[path[-1]] = value
-
-        self.save()
-
-    def snapshot(self):
-        return self.identity

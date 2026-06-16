@@ -9,13 +9,15 @@ from runtime.services.advisor_service import AdvisorService
 
 from memory.long_term_memory.semantic_memory.embeddings.embedding_service import EmbeddingService
 from memory.storage.vector_memory.vector_memory_service import VectorMemoryService
-from memory.memory_models.memory_type import MemoryType
+from memory.memory_models.basic_memory.memory_type import MemoryType
 from memory.long_term_memory.semantic_memory.relations.canonicalizer import MemoryCanonicalizer
 from memory.storage.lineage.lineage_service import LineageService
 from memory.memory_models.provenance import Provenance
+from memory.memory_models.tier_mapper import get_tier
 
 # Typical values: 0.70 = loose; 0.75 = balanced; 0.80 = strict; 0.85 = very strict
 SIMILARITY_THRESHOLD = 0.78
+
 
 def rank(memory):
     recency = (datetime.now(UTC) - memory.created_at).days
@@ -70,16 +72,21 @@ class MemoryService:
                     relationship_type="derived_from"
                 )
 
+            memory_tier = get_tier(memory_type=memory_type)
+
             record = MemoryRecord(
                 id=memory_id,
                 vector_id=memory_id,
 
                 memory_type=memory_type,
+                memory_tier=memory_tier,
+
                 content=content,
                 canonical_content=canonical_content,
 
                 confidence=1.0,
                 importance=importance,
+                stability=1.0,
                 
                 source=source,
                 
@@ -182,3 +189,13 @@ class MemoryService:
             q = q.filter(MemoryRecord.memory_type.in_(memory_types))
 
         return q.limit(limit).all()
+    
+
+    async def search_by_tier(self, query: str, tier: str, limit: int=20):
+        if tier:
+            memories = [
+                m for m in memories
+                if m.memory_tier == tier
+            ]
+
+            return memories

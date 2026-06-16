@@ -1,7 +1,7 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 
-from config import settings
+from genetics.base_configs.config import settings
 
 client = QdrantClient(url=settings.QDRANT_URL)
 

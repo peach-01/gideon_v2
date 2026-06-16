@@ -13,11 +13,8 @@ CREATE TABLE memory_edges (
 
     created_at TIMESTAMP,
 
-    CONSTRAINT uq_source_id
-    UNIQUE(source_entity_id),
-
-    CONSTRAINT uq_target_id
-    UNIQUE(target_entity_id)
+    CONSTRAINT uq_relations
+    UNIQUE(target_entity_id, relation, source_entity_id)
 );
 
 CREATE INDEX idx_edges_source

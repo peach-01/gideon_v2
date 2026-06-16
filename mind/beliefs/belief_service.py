@@ -1,66 +1,25 @@
-from datetime import datetime, UTC
-
-from mind.beliefs.belief_model import Belief
-from mind.beliefs.belief_store import BeliefStore
+from memory.memory_models.basic_memory.memory_type import MemoryType
 
 
 class BeliefService:
 
-    def __init__(self):
-        self.store = BeliefStore()
-        self.beliefs = self.store.load()
+    def __init__(self, memory_service):
+        self.memory = memory_service
 
 
-    def all(self):
-        return self.beliefs
-    
-
-    def add(self, statement: str, domain: str, source: str, confidence: float=0.5, evidence: list[str] | None = None):
-        belief = Belief(
-            statement=statement, 
-            domain=domain,
-            source=source,
-            confidence=confidence, 
-            evidence=evidence or []
+    async def all(self):
+        return await self.memory.search(
+            query="",
+            memory_types=[
+                MemoryType.BELIEF
+            ],
+            limit=1000
         )
-
-        self.beliefs.append(belief)
-        self.store.save(self.beliefs)
-
-        return belief
     
 
-    def find(self, statement: str):
-        for belief in self.beliefs:
-            if belief.statement == statement:
-                return belief
-            
-        return None
-    
-
-    def reinforce(self, statement: str, evidence: str, delta: float=0.05):
-        belief = self.find(statement=statement)
-        if not belief:
-            return None
-        
-        belief.confidence = min(1.0, belief.confidence + delta)
-        belief.evidence.append(evidence)
-        belief.last_reviewed = datetime.now(UTC)
-
-        self.store.save(self.beliefs)
-
-        return belief
-    
-
-    def contradict(self, statement: str, contradiction: str, delta: float=1.0):
-        belief = self.find(statement=statement)
-        if not belief:
-            return None
-        
-        belief.confidence = max(0.0, belief.confidence - delta)
-        belief.contradictions.append(contradiction)
-        belief.last_reviewed = datetime.now(UTC)
-
-        self.store.save(self.beliefs)
-
-        return belief
+    async def add(self, statement: str, confidence: float=0.5):
+        return await self.memory.store(
+            content=statement,
+            memory_type=MemoryType.BELIEF,
+            importance=confidence,
+        )

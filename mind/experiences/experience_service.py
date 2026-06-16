@@ -1,22 +1,25 @@
-from mind.experiences.experience_model import Experience
-from mind.experiences.experience_store import ExperienceStore
+from memory.memory_models.basic_memory.memory_type import MemoryType
 
 
 class ExperienceService:
 
-    def __init__(self):
-        self.store = ExperienceStore()
-        self.experiences = self.store.load()
+    def __init__(self, memory_service):
+        self.memory = memory_service
 
 
-    def all(self):
-        return self.experiences
+    async def all(self):
+        return await self.memory.search(
+            query="",
+            memory_types=[
+                MemoryType.LIFE_EVENT
+            ],
+            limit=1000
+        )
     
 
-    def add(self, title: str, summary: str, outcome: str, lessons: list[str], confidence: float=0.5):
-        experience = Experience(title=title, summary=summary, outcome=outcome, lessons=lessons, confidence=confidence)
-
-        self.experiences.append(experience)
-        self.store.save(self.experiences)
-
-        return experience
+    async def add(self, summary: str, importance: float=0.7):
+        return await self.memory.store(
+            content=summary,
+            memory_type=MemoryType.LIFE_EVENT,
+            importance=importance,
+        )

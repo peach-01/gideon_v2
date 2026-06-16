@@ -1,7 +1,7 @@
 from openai import AsyncOpenAI
-from config import settings
+from genetics.base_configs.config import settings
 
-client = AsyncOpenAI(api_key=settings.OPEN_API_KEY)
+client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 class EmbeddingService:

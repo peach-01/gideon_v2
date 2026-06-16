@@ -1,12 +1,12 @@
-import uuid
-from episode_model import Episode
-from datetime import datetime, UTC
+from memory.memory_models.basic_memory.memory_type import MemoryType
+from memory.memory_models.provenance import Provenance
 
 
 class EpisodeService:
 
-    def __init__(self, advisor):
+    def __init__(self, advisor, memory_service):
         self.advisor = advisor
+        self.memory = memory_service
 
 
     async def create_episode(self, session_id: str, messages: list):
@@ -25,13 +25,19 @@ class EpisodeService:
                 """
         )
 
-        return Episode(
-            id=str(uuid.uuid4()),
-            session_id=session_id,
-            summary=summary,
-            start_time=messages[0].timestamp,
-            end_time=messages[-1].timestamp,
-            importance=0.7,                     # placeholder
-            emotional_weight=0.5,           # placeholder
-            created_at=datetime.now(UTC)
+        await self.memory.store(
+            content=summary,
+            memory_type=MemoryType.EPISODE,
+            source="conversation",
+
+            importance=0.7,             # placeholder
+
+            provenance=Provenance(episode_id=session_id),
+
+            metadata={
+                "session_id": session_id,
+                "start_time": str(messages[0].timestamp),
+                "end_time": str(messages[-1].timestamp),
+                "message_count": len(messages)
+            }
         )

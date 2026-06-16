@@ -1,0 +1,7 @@
+openai
+pydantic
+pydantic-settings
+python-dotenv
+sqlalchemy
+psycopg2
+qdrant_client

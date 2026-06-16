@@ -29,6 +29,15 @@ class GraphMemoryService:
                 created_at=datetime.now(UTC),
             )
 
+            existing = db.query(MemoryEdge).filter(
+                MemoryEdge.source_entity_id == source.id,
+                MemoryEdge.target_entity_id == target.id,
+                MemoryEdge.relation == relation
+            ).first()
+
+            if existing:
+                return existing
+
             db.add(edge)
             db.commit()
 
@@ -42,7 +51,7 @@ class GraphMemoryService:
         db = SessionLocal()
 
         try:
-            return db.query(MemoryEdge).filter((MemoryEdge.source_identity_id == entity_id) | (MemoryEdge.target_entity_id == entity_id)).all()
+            return db.query(MemoryEdge).filter((MemoryEdge.source_entity_id == entity_id) | (MemoryEdge.target_entity_id == entity_id)).all()
         
         finally:
             db.close()

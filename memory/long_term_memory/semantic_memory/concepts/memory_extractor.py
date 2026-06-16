@@ -1,6 +1,6 @@
 import json
 
-from memory.memory_models.memory_type import MemoryType
+from memory.memory_models.basic_memory.memory_type import MemoryType
 from memory.memory_models.provenance import Provenance
 
 from runtime.orchestrator import parse_json_response

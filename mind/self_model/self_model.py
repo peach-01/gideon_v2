@@ -1,13 +1,13 @@
 from pydantic import BaseModel
 
-from mind.beliefs.belief_model import Belief
-from mind.experiences.experience_model import Experience
-
+from memory.memory_models.basic_memory.memory import Memory
 
 class SelfModel(BaseModel):
 
     identity: dict
 
-    beliefs: list[Belief] = []
-
-    experiences: list[Experience] = []
+    beliefs: list[Memory] = []
+    values: list[Memory] = []
+    preferences: list[Memory] = []
+    
+    experiences: list[Memory] = []

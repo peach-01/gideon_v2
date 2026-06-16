@@ -5,7 +5,7 @@ from genetics.base_configs.config import settings
 from mind.self_model.self_model_service import SelfModelService
 from mind.self_model.self_model_formatter import SelfModelFormatter
 
-client = AsyncOpenAI(api_key=settings.OPEN_API_KEY)
+client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 class OpenAIProvider:
