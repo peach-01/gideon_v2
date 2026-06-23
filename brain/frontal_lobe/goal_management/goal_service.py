@@ -5,14 +5,13 @@ from datetime import datetime, UTC
 from infrastructure.databases.postgres import SessionLocal
 from infrastructure.databases.postgres_models import GoalRecord
 
-from memory.memory_service import MemoryService
-from memory.models.memory_type import MemoryType
+from memory.memory_models.basic_memory.memory_type import MemoryType
 
 
 class GoalService:
 
-    def __init__(self):
-        self.memory = MemoryService()
+    def __init__(self, memory_service):
+        self.memory = memory_service
 
     async def create_goal(self, title: str, description: str = "", priority: float = 0.8, source: str = "user"):
         db = SessionLocal()

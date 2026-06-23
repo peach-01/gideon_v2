@@ -5,8 +5,6 @@ from math import log
 from infrastructure.databases.postgres import SessionLocal
 from infrastructure.databases.postgres_models import MemoryRecord
 
-from runtime.services.advisor_service import AdvisorService
-
 from memory.long_term_memory.semantic_memory.embeddings.embedding_service import EmbeddingService
 from memory.storage.vector_memory.vector_memory_service import VectorMemoryService
 from memory.memory_models.basic_memory.memory_type import MemoryType
@@ -32,10 +30,12 @@ def rank(memory):
 
 class MemoryService:
 
-    def __init__(self):
+    def __init__(self, advisor_service):
+        self.advisor = advisor_service
+
         self.embedder = EmbeddingService()
         self.vector_service = VectorMemoryService()
-        self.canonicalizer = MemoryCanonicalizer(advisor_service=AdvisorService())
+        self.canonicalizer = MemoryCanonicalizer(advisor_service=self.advisor)
         self.lineage = LineageService()
 
     
@@ -43,12 +43,15 @@ class MemoryService:
         return confidence + (1.0 - confidence) * 0.15
 
 
-    async def store(self, content: str, provenance: Provenance | None = None, memory_type: str=MemoryType.FACT, source: str="user", importance: float=0.5):
+    async def store(self, content: str, provenance: Provenance | None = None, memory_type: str=MemoryType.FACT, source: str="user", importance: float=0.5, meta_data: dict | None = None):
         db = SessionLocal()
 
         try:
             # memory deduplication
-            canonical_content = await self.canonicalizer.canonicalize(content=content, memory_type=str(memory_type))
+            canonical_content = await self.canonicalizer.canonicalize(
+                content=content, 
+                memory_type=str(memory_type)
+            )
 
             existing = db.query(MemoryRecord).filter(MemoryRecord.canonical_content == canonical_content).first()
             if existing:
@@ -65,10 +68,10 @@ class MemoryService:
 
             embedding = await self.embedder.embed(canonical_content)
 
-            if provenance and provenance.parent_memory_id:
+            if provenance and provenance.origin_memory_id:
                 await self.lineage.add_link(
                     child_memory_id=memory_id,
-                    parent_memory_id=provenance.parent_memory_id,
+                    parent_memory_id=provenance.origin_memory_id,
                     relationship_type="derived_from"
                 )
 
@@ -90,10 +93,15 @@ class MemoryService:
                 
                 source=source,
                 
-                last_accessed=datetime.now(UTC),
                 access_count=0,
+                last_accessed=datetime.now(UTC),
 
-                provenance=provenance,
+                origin_message_id=provenance.message_id if provenance else None,
+                origin_episode_id=provenance.episode_id if provenance else None,
+                origin_memory_id=provenance.origin_memory_id if provenance else None,
+                root_memory_id=provenance.root_memory_id if provenance else None,
+
+                meta_data=meta_data or {},
                 
                 created_at=datetime.now(UTC),
             )
@@ -182,7 +190,7 @@ class MemoryService:
             db.close()
 
     
-    def keyword_search(self, db, query: str, memory_types: list | None, limit: int):
+    async def keyword_search(self, db, query: str, memory_types: list | None, limit: int):
         q = db.query(MemoryRecord).filter(MemoryRecord.content.ilike(f"%{query}%"))
         
         if memory_types:
@@ -192,10 +200,9 @@ class MemoryService:
     
 
     async def search_by_tier(self, query: str, tier: str, limit: int=20):
-        if tier:
-            memories = [
-                m for m in memories
-                if m.memory_tier == tier
-            ]
+        results = await self.search(query=query, limit=limit*2)
 
-            return memories
+        return [
+            m for m in results
+            if m.memory_tier == tier
+        ][:limit]

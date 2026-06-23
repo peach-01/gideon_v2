@@ -10,10 +10,12 @@ from brain.frontal_lobe.goal_management.goals import GoalTool
 
 class ToolService:
 
-    def __init__(self):
+    def __init__(self, memory_service):
+        self.memory = memory_service
+
         self.tools = {
             "filesystem": FileSystemTool(),
-            "goals": GoalTool(),
+            "goals": GoalTool(memory_service=self.memory),
             "notes": NotesTool(),
             "reminders": ReminderTool(),
             "calendar": CalendarTool(),

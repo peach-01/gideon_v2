@@ -6,8 +6,9 @@ from actions.tools.serializer import serialize
 
 class ToolExecutor:
 
-    def __init__(self):
-        self.tool_router = ToolRouter()
+    def __init__(self, memory_service):
+        self.memory = memory_service
+        self.tool_router = ToolRouter(self.memory)
 
     
     async def execute(self, tool_calls):

@@ -28,7 +28,7 @@ CREATE TABLE memories (
     valid_from TIMESTAMP,
     valid_until TIMESTAMP,
 
-    metadata JSONB DEFAULT '{},'
+    meta_data JSONB DEFAULT '{},'
 
     created_at TIMESTAMP,
     updated_at TIMESTAMP,

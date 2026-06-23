@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 
@@ -9,9 +9,9 @@ class Entity(BaseModel):
     name: str
     entity_type: str
 
-    aliases: list[str] = []
+    aliases: list[str] = Field(default_factory=list)
 
-    descriptions: str | None = None
+    description: str | None = None
 
     created_at: datetime
     updated_at: datetime

@@ -1,3 +1,7 @@
+from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
+from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
+
+
 class MemoryCanonicalizer:
 
     def __init__(self, advisor_service):
@@ -45,9 +49,19 @@ class MemoryCanonicalizer:
             {content}
         """
 
-        result = await self.advisor.ask(
+        response = await self.advisor.ask(
             task="summarization",
-            prompt=prompt,
+            messages=[
+                ConversationMessage(
+                    role="user",
+                    content=[
+                        ContentBlock(
+                            type="text",
+                            content=prompt,
+                        ),
+                    ]
+                )
+            ],
         )
 
-        return result.strip()
+        return response.content.strip()

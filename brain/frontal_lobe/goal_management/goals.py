@@ -5,8 +5,9 @@ class GoalTool:
 
     name = "goals"
 
-    def __init__(self):
-        self.service = GoalService()
+    def __init__(self, memory_service):
+        self.memory = memory_service
+        self.service = GoalService(memory_service=self.memory)
 
     async def create_goal(self, title, description="", priority=0.8):
         return await self.service.create_goal(title=title, description=description, priority=priority)

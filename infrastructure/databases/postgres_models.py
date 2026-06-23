@@ -31,19 +31,34 @@ class MemoryRecord(Base):
     id = Column(String, primary_key=True)
     vector_id = Column(String)
 
-    memory_type = Column(String)
-    content = Column(String)
-    canonical_content = Column(String, index=True)
+    memory_type = Column(String, nullable=False)
+    memory_tier = Column(String, nullable=False)
 
-    confidence = Column(Float)
-    importance = Column(Float)
+    content = Column(String)
+    canonical_content = Column(Text, unique=True, index=True)
+
+    confidence = Column(Float, default=1.0)
+    importance = Column(Float, default=0.5)
+    stability = Column(Float, default=1.0)
 
     source = Column(String)
 
-    created_at = Column(DateTime)
+    access_count = Column(Integer, default=0)
     last_accessed = Column(DateTime)
 
-    access_count = Column(Integer)
+    origin_message_id = Column(String)
+    origin_episode_id = Column(String)
+    origin_memory_id = Column(String)
+
+    root_memory_id = Column(String)
+
+    meta_data = Column(JSONB, default=dict)
+
+    valid_from = Column(DateTime)
+    valid_until = Column(DateTime)
+
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
 
 
 class MemoryEdge(Base):
@@ -56,6 +71,8 @@ class MemoryEdge(Base):
     target_entity_id = Column(String, ForeignKey("entities.id"))
 
     relation = Column(String, index=True)
+
+    origin_episode_id = Column(String)
 
     confidence = Column(Float, default=1.0)
 
@@ -85,7 +102,7 @@ class MessageRecord(Base):
 
     role = Column(String)
 
-    content = Column(String)
+    content = Column(Text)
 
     timestamp = Column(DateTime)
 

@@ -3,8 +3,10 @@ from actions.tools.tool_application.tool_service import ToolService
 
 class ToolRouter:
 
-    def __init__(self):
-        self.tool_service = ToolService()
+    def __init__(self, memory_service):
+        self.memory = memory_service
+
+        self.tool_service = ToolService(self.memory)
         self.routes = self.tool_service.get_func_map()
 
 

@@ -10,6 +10,9 @@ class IdentityService:
     def save(self):
         self.store.save(self.identity)
 
+    def snapshot(self):
+        return self.identity
+
     @property
     def name(self):
         return self.identity["identity"]["name"]

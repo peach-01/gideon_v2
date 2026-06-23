@@ -3,12 +3,12 @@ class SelfModelFormatter:
     @staticmethod
     def format(snapshot: dict):
         beliefs = "\n".join(
-            f"- [{b.domain}] {b.statement} ({b.confidence:.2f})"
+            f"- {b.content} ({b.confidence:.2f})"
             for b in snapshot.beliefs[:25]    
         )
 
         experiences = "\n".join(
-            f"- {e.title}: {e.outcome}"
+            f"- {e.content}"
             for e in snapshot.experiences[-10:]    
         )
 
@@ -16,7 +16,7 @@ class SelfModelFormatter:
 
         values = "\n".join(
             f"- {k}: {v}"
-            for k, v in identity["values"].items()    
+            for k, v in snapshot.values    
         )
 
 

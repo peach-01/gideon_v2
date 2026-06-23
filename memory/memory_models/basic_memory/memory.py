@@ -8,10 +8,13 @@ class Memory(BaseModel):
 
     id: str
 
+    vector_id: str | None = None
+
     memory_type: str
     memory_tier: str
 
     content: str
+    canonical_content: str
 
     confidence: float = 1.0
     importance: float = 0.5
@@ -19,7 +22,10 @@ class Memory(BaseModel):
 
     source: str
 
-    metadata: dict = Field(default_factory=dict)
+    access_count: int = 0
+    last_accessed: datetime | None = None
+
+    meta_data: dict = Field(default_factory=dict)
     
     provenance: Provenance | None = None
 

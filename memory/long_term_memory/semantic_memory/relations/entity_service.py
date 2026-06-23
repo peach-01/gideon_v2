@@ -1,14 +1,11 @@
 import uuid
 
-from infrastructure.databases.postgres import SessionLocal
 from infrastructure.databases.postgres_models import EntityRecord
 
 
 class EntityService:
 
-    async def get_or_create(self, name: str, entity_type: str):
-        db = SessionLocal()
-
+    async def get_or_create(self, db, name: str, entity_type: str):
         try:
             entity = db.query(EntityRecord).filter(EntityRecord.name == name).first()
             if entity:

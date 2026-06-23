@@ -16,8 +16,8 @@ class GraphMemoryService:
         db = SessionLocal()
 
         try:
-            source = await self.entities.get_or_create(source_entity, "concept")
-            target = await self.entities.get_or_create(target_entity, "concept")
+            source = await self.entities.get_or_create(db, source_entity, "concept")
+            target = await self.entities.get_or_create(db, target_entity, "concept")
 
             edge = MemoryEdge(
                 id=str(uuid.uuid4()),

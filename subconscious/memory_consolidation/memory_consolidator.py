@@ -4,15 +4,15 @@ from datetime import datetime, UTC, timedelta
 from infrastructure.databases.postgres import SessionLocal
 from infrastructure.databases.postgres_models import MessageRecord
 
-from runtime.services.advisor_service import AdvisorService
-from memory.memory_service import MemoryService
+from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
+from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
 
 
 class MemoryConsolidator:
 
-    def __init__(self):
-        self.advisor = AdvisorService()
-        self.memory = MemoryService()
+    def __init__(self, advisor_service, memory_service):
+        self.advisor = advisor_service
+        self.memory = memory_service
 
 
     async def consolidate(self):
@@ -82,18 +82,30 @@ class MemoryConsolidator:
             {transcript}
         """
 
-        result = await self.advisor.ask(
-            system_prompt="""
-                You are performing memory consolidation.
+        system_prompt = """
+            You are performing memory consolidation.
 
-                Convert conversations into durable memories that produce valuable insights.
-                Return JSON only.
-            """,
-            prompt=prompt,
+            Convert conversations into durable memories that produce valuable insights.
+            Return JSON only.
+        """,
+
+        result = await self.advisor.ask(
+            system_prompt=system_prompt,
+            messages=[
+                ConversationMessage(
+                    role="user",
+                    content=[
+                        ContentBlock(
+                            type="text",
+                            content=prompt,
+                        )
+                    ]
+                )
+            ],
             task="summarization",
         )
 
-        return json.loads(result)
+        return json.loads(result.content)
 
 
     def _delete_redundant_messages(self, db, messages):

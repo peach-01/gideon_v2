@@ -1,9 +1,18 @@
 import json
+import re
 
 from memory.memory_models.basic_memory.memory_type import MemoryType
 from memory.memory_models.provenance import Provenance
+from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
+from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
 
-from runtime.orchestrator import parse_json_response
+
+# ------------- HELPER --------------
+def parse_json_response(text):
+    text = re.sub(r"```json", "", text)
+    text = re.sub(r"```", "", text)
+
+    return json.loads(text.strip())
 
 
 class MemoryExtractor:
@@ -87,19 +96,33 @@ class MemoryExtractor:
         """
 
         try:
-            results = await self.advisor.ask(
+            response = await self.advisor.ask(
                 system_prompt="""
                     You are a memory extraction engine.
                     Only extract durable memories.
+                    
                     Return JSON only.
                 """,
-                prompt=prompt,
+                messages=[
+                    ConversationMessage(
+                        role="user",
+                        content=[
+                            ContentBlock(
+                                type="text",
+                                content=prompt,
+                            ),
+                        ]
+                    )
+                ],
                 task="extraction"
             )
 
-            results = parse_json_response(results)
+            results = (
+                response.structured_date if response.structured_data
+                else parse_json_response(response.content)
+            )
 
-            for m in results["memories"]:
+            for m in results.get("memories", []):
                 await self.memory.store(
                     content=m["content"],
                     memory_type=m.get("memory_type", MemoryType.FACT),
@@ -113,12 +136,13 @@ class MemoryExtractor:
                     )
                 )
 
-            for e in results["edges"]:
+            for e in results.get("edges", []):
                 await self.graph_memory.add_edge(
                     source_entity=e["source_entity"],
                     relation=e["relation"],
                     target_entity=e["target_entity"],
                     confidence=e.get("confidence", 1.0),
+                    origin_episode_id=episode_id,
                 )
 
         except Exception as e:

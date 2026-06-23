@@ -1,12 +1,15 @@
-from openai import AsyncOpenAI
-from genetics.base_configs.config import settings
-
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-
+import asyncio
+from sentence_transformers import SentenceTransformer
 
 class EmbeddingService:
 
-    async def embed(self, text: str):
-        response = await client.embeddings.create(model="text-embedding-3-small", input=text)
+    def __init__(self):
+        self.model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
-        return response.data[0].embedding
+
+    async def embed(self, text: str):
+        loop = asyncio.get_running_loop()
+
+        embedding = await loop.run_in_executor(None, lambda: self.model.encode(text, normalize_embeddings=True).tolist())
+
+        return embedding

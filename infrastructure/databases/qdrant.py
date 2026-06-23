@@ -11,7 +11,7 @@ if "gideon_memory" not in collections:
     client.create_collection(
         collection_name="gideon_memory",
         vectors_config=VectorParams(
-            size=1536,
+            size=384,
             distance=Distance.COSINE,
         ),
     )

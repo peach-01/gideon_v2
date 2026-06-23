@@ -1,3 +1,7 @@
+from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
+from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
+
+
 class CodingAgent:
 
     def __init__(self, advisor_service):
@@ -12,4 +16,19 @@ class CodingAgent:
             Return Implementation.
             """
         
-        return await self.advisor.ask(prompt=prompt, task="coding")
+        response = await self.advisor.ask(
+            task="coding",
+            messages=[
+                ConversationMessage(
+                    role="user",
+                    content=[
+                        ContentBlock(
+                            type="text",
+                            content=prompt,
+                        )
+                    ]
+                )
+            ]
+        )
+
+        return response.content
