@@ -1,0 +1,11 @@
+openai
+pydantic
+pydantic-settings
+python-dotenv
+sentence-transformers
+sqlalchemy
+psutil
+psycopg2
+qdrant_client
+google-genai
+ollama

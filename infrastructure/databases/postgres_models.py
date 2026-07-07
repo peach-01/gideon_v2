@@ -1,0 +1,156 @@
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import Column, String, Float, DateTime, Boolean, Text, Integer, ForeignKey, UUID
+from sqlalchemy.dialects.postgresql import JSONB
+
+class Base(DeclarativeBase):
+    pass
+
+
+# ------------ MEMORIES ------------
+class EntityRecord(Base):
+
+    __tablename__ = "entities"
+
+    id = Column(String, primary_key=True)
+
+    name = Column(String)
+    entity_type = Column(String)
+
+    aliases = Column(JSONB)
+
+    description = Column(Text)
+
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
+
+
+class MemoryRecord(Base):
+
+    __tablename__ = "memories"
+
+    id = Column(String, primary_key=True)
+    vector_id = Column(String)
+
+    memory_type = Column(String, nullable=False)
+    memory_tier = Column(String, nullable=False)
+
+    content = Column(String)
+    canonical_content = Column(Text, unique=True, index=True)
+
+    confidence = Column(Float, default=1.0)
+    importance = Column(Float, default=0.5)
+    stability = Column(Float, default=1.0)
+
+    source = Column(String)
+
+    access_count = Column(Integer, default=0)
+    last_accessed = Column(DateTime)
+
+    origin_message_id = Column(String)
+    origin_episode_id = Column(String)
+    origin_memory_id = Column(String)
+
+    root_memory_id = Column(String)
+
+    meta_data = Column(JSONB, default=dict)
+
+    valid_from = Column(DateTime)
+    valid_until = Column(DateTime)
+
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
+
+
+class MemoryEdge(Base):
+
+    __tablename__ = "memory_edges"
+
+    id = Column(String, primary_key=True)
+
+    source_entity_id = Column(String, ForeignKey("entities.id"))
+    target_entity_id = Column(String, ForeignKey("entities.id"))
+
+    relation = Column(String, index=True)
+
+    origin_episode_id = Column(String)
+
+    confidence = Column(Float, default=1.0)
+
+    created_at = Column(DateTime)
+
+
+class MemoryLineageRecord(Base):
+    __tablename__ = "memory_lineage"
+
+    id = Column(UUID(as_uuid=False), primary_key=True)
+
+    child_memory_id = Column(UUID(as_uuid=False), nullable=False)
+    parent_memory_id = Column(UUID(as_uuid=False), nullable=False)
+
+    relationship_type = Column(Text, nullable=False)
+
+    created_at = Column(DateTime)
+
+
+# ------------ MESSAGES ------------
+class MessageRecord(Base):
+
+    __tablename__ = "messages"
+
+    id = Column(String, primary_key=True)
+    session_id = Column(String)
+
+    role = Column(String)
+
+    content = Column(Text)
+
+    timestamp = Column(DateTime)
+
+
+# ------------ GOALS -------------
+class GoalRecord(Base):
+
+    __tablename__ = "goals"
+
+    id = Column(String, primary_key=True)
+
+    title = Column(String, nullable=False)
+    description = Column(Text)
+
+    status = Column(String, default="active")
+    priority = Column(Float, default=0.5)
+
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
+
+    completed_at = Column(DateTime, nullable=True)
+
+    source = Column(String)
+
+
+# ---------- CALENDAR EVENTS -----------
+class EventRecord(Base):
+
+    __tablename__ = "events"
+
+    id = Column(String, primary_key=True)
+
+    title = Column(String)
+
+    start = Column(DateTime)
+    end = Column(DateTime)
+
+
+# ------------- REMINDERS --------------
+class ReminderRecord(Base):
+
+    __tablename__ = "reminders"
+
+    id = Column(String, primary_key=True)
+
+    title = Column(String)
+    message = Column(String)
+
+    due_at = Column(DateTime)
+
+    completed = Column(Boolean)

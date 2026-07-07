@@ -1,0 +1,153 @@
+import json
+import re
+
+from memory.memory_models.basic_memory.memory_type import MemoryType
+from memory.memory_models.provenance import Provenance
+from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
+from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
+
+
+# ------------- HELPER --------------
+def parse_json_response(text):
+    text = re.sub(r"```json", "", text)
+    text = re.sub(r"```", "", text)
+
+    return json.loads(text.strip())
+
+
+class MemoryExtractor:
+
+    def __init__(self, advisor_service, memory_service, graph_memory):
+        self.advisor = advisor_service
+        self.memory = memory_service
+        self.graph_memory = graph_memory
+
+
+    async def extract(self, user_msg: str, gideon_response: str, message_id, episode_id):
+        prompt = f"""
+            Extract durable memories only.
+
+            Rules:
+            - Extract durable facts
+            - Extract user preferences
+            - Extract goals
+            - Extract projects
+            - Extract people
+            - Extract relationships
+            - Extract locations
+            - Extract workflows
+            - Extract life events
+            - Extract skills
+            - Extract important decisions
+
+            - Ignore temporary requests
+            - Ignore greetings
+            - Ignore conversational fluff
+            - Ignore small talk
+
+            Valid memory_types:
+                fact
+                preference
+                goal
+                project
+                person
+                relationship
+                location
+                workflow
+                life_event
+                skill
+                decision
+
+            Return ONLY JSON.
+
+            Example:
+                Input:
+                    "My wife Sarah loves hiking."
+
+                Output:
+                {
+                    "memories": [
+                        "content": "User is married to Sarah",
+                        "memory_type": "relationship",
+                        "importance": 0.9
+                    ],
+
+                    "edges": [
+                        {
+                            "source_entity": "user",
+                            "relation": "married_to",
+                            "target_entity": "Sarah",
+                            "confidence": 1.0
+                        },
+                        {
+                            "source_entity": "Sarah",
+                            "relation": "likes",
+                            "target_entity": "hiking",
+                            "confidence": 0.95
+                        }
+                    ]
+                }
+
+            USER:
+            {user_msg}
+
+            GIDEON:
+            {gideon_response}         
+        """
+
+        try:
+            print(f"[DEBUG][MEMORY] Prompt sent to API: {prompt}")
+
+            response = await self.advisor.ask(
+                system_prompt="""
+                    You are a memory extraction engine.
+                    Only extract durable memories.
+                    
+                    Return JSON only.
+                """,
+                messages=[
+                    ConversationMessage(
+                        role="user",
+                        content=[
+                            ContentBlock(
+                                type="text",
+                                content=prompt,
+                            ),
+                        ]
+                    )
+                ],
+                task="extraction"
+            )
+
+            print(f"[GIDEON][MEMORY] {response}")
+
+            results = (
+                response.structured_date if response.structured_data
+                else parse_json_response(response.content)
+            )
+
+            for m in results.get("memories", []):
+                await self.memory.store(
+                    content=m["content"],
+                    memory_type=m.get("memory_type", MemoryType.FACT),
+                    source="conversation",
+                    importance=m.get("importance", 0.5),
+
+                    provenance = Provenance(
+                        message_id=message_id,
+                        episode_id=episode_id,
+                        source_type="conversation"
+                    )
+                )
+
+            for e in results.get("edges", []):
+                await self.graph_memory.add_edge(
+                    source_entity=e["source_entity"],
+                    relation=e["relation"],
+                    target_entity=e["target_entity"],
+                    confidence=e.get("confidence", 1.0),
+                    origin_episode_id=episode_id,
+                )
+
+        except Exception as e:
+            print(f"[MEMORY_EXTRACTOR] FAILED: {e}")
