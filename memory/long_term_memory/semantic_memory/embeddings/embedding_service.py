@@ -7,6 +7,10 @@ class EmbeddingService:
         self.model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 
+    async def boot(self):
+        print("[EMBEDDING] Ready.")
+
+
     async def embed(self, text: str):
         loop = asyncio.get_running_loop()
 

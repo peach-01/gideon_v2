@@ -1,6 +1,6 @@
 import json
 
-from nervous_system.signal_bus.routing.tool_router import ToolRouter
+from nervous_system.signal_bus.routers.tool_router import ToolRouter
 from actions.tools.serializer import serialize
 
 
@@ -9,6 +9,10 @@ class ToolExecutor:
     def __init__(self, memory_service):
         self.memory = memory_service
         self.tool_router = ToolRouter(self.memory)
+
+    
+    async def boot(self):
+        print("[TOOL-EXECUTOR] Tools ready.")
 
     
     async def execute(self, tool_calls):

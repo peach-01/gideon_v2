@@ -7,6 +7,12 @@ class IdentityService:
         self.store = IdentityStore()
         self.identity = self.store.load()
 
+    
+    async def boot(self):
+        self._snapshot = self.snapshot()
+        print("[IDENTITY] Ready.")
+
+
     def save(self):
         self.store.save(self.identity)
 

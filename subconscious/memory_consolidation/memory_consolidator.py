@@ -4,8 +4,8 @@ from datetime import datetime, UTC, timedelta
 from infrastructure.databases.postgres import SessionLocal
 from infrastructure.databases.postgres_models import MessageRecord
 
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
+from models.python.conversation.content_block import ContentBlock
+from models.python.conversation.converstation_message import ConversationMessage
 
 
 class MemoryConsolidator:
@@ -89,21 +89,27 @@ class MemoryConsolidator:
             Return JSON only.
         """,
 
+        messages = [
+            ConversationMessage(
+                role="user",
+                content=[
+                    ContentBlock(
+                        type="text",
+                        content=prompt,
+                    )
+                ]
+            )
+        ],
+
+        print(f"[DEBUG][MEM-CONSOLIDATE][{datetime.now():%X}] Prompt sent to API: {messages}")
+
         result = await self.advisor.ask(
             system_prompt=system_prompt,
-            messages=[
-                ConversationMessage(
-                    role="user",
-                    content=[
-                        ContentBlock(
-                            type="text",
-                            content=prompt,
-                        )
-                    ]
-                )
-            ],
+            messages=messages,
             task="summarization",
         )
+
+        print(f"[DEBUG][GIDEON][MEM-CONSOLIDATE][{datetime.now():%X}] {result}")
 
         return json.loads(result.content)
 

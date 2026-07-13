@@ -5,12 +5,20 @@ from datetime import datetime, UTC
 from infrastructure.databases.postgres import SessionLocal
 from infrastructure.databases.postgres_models import MemoryEdge
 from memory.long_term_memory.semantic_memory.relations.entity_service import EntityService
+from infrastructure.databases.postgres_models import MemoryEdge
+from infrastructure.databases.postgres_models import EntityRecord
+from models.python.memory.graph_summary import GraphSummary
 
 
 class GraphMemoryService:
 
     def __init__(self):
         self.entities = EntityService()
+
+
+    async def boot(self):
+        print("[GRAPH-MEMORY] Ready.")
+    
 
     async def add_edge(self, source_entity: str, relation: str, target_entity: str, confidence: float=1.0, origin_episode_id: str | None = None):
         db = SessionLocal()
@@ -47,11 +55,28 @@ class GraphMemoryService:
             db.close()
 
     
-    async def get_edges(self, entity_id: str):
+    async def get_summary(self) -> GraphSummary:
         db = SessionLocal()
-
+        
         try:
-            return db.query(MemoryEdge).filter((MemoryEdge.source_entity_id == entity_id) | (MemoryEdge.target_entity_id == entity_id)).all()
+            entity_count = db.query(EntityRecord).count()
+
+            edges = db.query(MemoryEdge).all()
+            edge_count = len(edges)
+
+            relation_counts: dict[str, int] = {}
+
+            for edge in edges:
+                relation_counts[edge.relation] = relation_counts.get(edge.relation, 0) + 1
+
+            top_relations = sorted(relation_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+
+            return GraphSummary(
+                entity_count=entity_count,
+                edge_count=edge_count,
+                relation_counts=relation_counts,
+                top_relations=top_relations,
+            )
         
         finally:
             db.close()

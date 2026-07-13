@@ -1,11 +1,15 @@
 from openai import AsyncOpenAI
 from genetics.base_configs.config import settings
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.advisor_response import AdvisorResponse
+from models.python.conversation.advisor_response import AdvisorResponse
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 class OpenAIProvider:
+
+    async def boot(self):
+        print("[OPENAI] Ready.")
+
 
     async def generate(self, model, messages, system_prompt=""):
         response = await client.chat.completions.create(

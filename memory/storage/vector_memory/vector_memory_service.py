@@ -9,6 +9,10 @@ class VectorMemoryService:
 
     COLLECTION = "gideon_memory"
 
+    async def boot(self):
+        print("[VECTOR-MEMORY] Ready.")
+
+
     async def store(self, memory_id: str, embedding: list[float], memory_type: str, source: str):
         client.upsert(
             collection_name=self.COLLECTION,

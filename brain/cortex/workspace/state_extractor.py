@@ -1,12 +1,18 @@
 import json
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
+from datetime import datetime
+from models.python.conversation.content_block import ContentBlock
+from models.python.conversation.converstation_message import ConversationMessage
 
 
 class StateExtractor:
 
     def __init__(self, advisor_service):
         self.advisor = advisor_service
+
+
+    async def boot(self):
+        print("[STATE-MANAGER] Ready.")
+
 
     async def extract(self, state, user_msg, gideon_msg):
         prompt = f"""
@@ -33,24 +39,26 @@ class StateExtractor:
             }}
             """
         
-        print(f"[DEBUG][STATE] Prompt sent to API: {prompt}")
+        messages = [
+            ConversationMessage(
+                role="user",
+                content=[
+                    ContentBlock(
+                        type="text", 
+                        content=prompt,
+                    ),
+                ],
+            )
+        ]
+        
+        print(f"[DEBUG][STATE][{datetime.now():%X}] Prompt sent to API: {messages}")
 
         result = await self.advisor.ask(
             task="extraction", 
-            messages=[
-                ConversationMessage(
-                    role="user",
-                    content=[
-                        ContentBlock(
-                            type="text", 
-                            content=prompt,
-                        ),
-                    ],
-                )
-            ]
+            messages=messages
         )
 
-        print(f"[GIDEON][STATE] {result}")
+        print(f"[DEBUG][GIDEON][STATE][{datetime.now():%X}] {result}")
 
         if result.structured_data:
             return result.structured_data

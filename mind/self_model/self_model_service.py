@@ -1,5 +1,5 @@
-from mind.self_model.self_model import SelfModel
-from memory.memory_models.basic_memory.memory_type import MemoryType
+from models.python.awareness.self_model import SelfModel
+from models.python.memory.enums.memory_type import MemoryType
 
 
 class SelfModelService:
@@ -7,6 +7,11 @@ class SelfModelService:
     def __init__(self, memory_service, identity_service):
         self.memory = memory_service
         self.identity = identity_service
+
+
+    async def boot(self):
+        self._snapshot = await self.snapshot()
+        print("[SELF-MODEL] Ready.")
 
 
     async def snapshot(self):

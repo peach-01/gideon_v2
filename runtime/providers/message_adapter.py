@@ -1,6 +1,6 @@
 from google.genai import types
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
+from models.python.conversation.content_block import ContentBlock
+from models.python.conversation.converstation_message import ConversationMessage
 
 
 class MessageAdapter:

@@ -6,11 +6,16 @@ from sqlalchemy import or_
 from infrastructure.databases.postgres import SessionLocal
 from infrastructure.databases.postgres_models import MessageRecord
 
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
+from models.python.conversation.converstation_message import ConversationMessage
+from models.python.conversation.content_block import ContentBlock
 
 
 class ConversationService:
+
+
+    async def boot(self):
+        print("[CONVERSATION] Ready.")
+
 
     async def store_message(self, session_id: str, message: ConversationMessage):
         db = SessionLocal()
@@ -78,6 +83,7 @@ class ConversationService:
         
         finally:
             db.close()
+
 
     def search_conversations(self, query: str, session_id: str | None = None, limit: int = 200):
         db = SessionLocal()

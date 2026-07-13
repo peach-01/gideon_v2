@@ -5,6 +5,10 @@ from infrastructure.databases.postgres_models import EntityRecord
 
 class EntityService:
 
+    async def boot(self):
+        print("[ENTITY] Ready.")
+
+
     async def get_or_create(self, db, name: str, entity_type: str):
         try:
             entity = db.query(EntityRecord).filter(EntityRecord.name == name).first()

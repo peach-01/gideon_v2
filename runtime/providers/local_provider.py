@@ -1,10 +1,14 @@
 from ollama import AsyncClient
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.advisor_response import AdvisorResponse
+from models.python.conversation.advisor_response import AdvisorResponse
 
 client = AsyncClient()
 
 
 class LocalProvider:
+
+    async def boot(self):
+        print("[OLLAMA] Ready.")
+
 
     async def generate(self, model, messages, system_prompt=""):    
         response = await client.chat(

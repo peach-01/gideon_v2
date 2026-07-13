@@ -1,63 +1,53 @@
-from runtime.services.advisor_service import AdvisorService
+from datetime import datetime, UTC
 
-from memory.memory_service import MemoryService
-from memory.long_term_memory.episodic_memory.conversations.conversation_service import ConversationService
-from memory.long_term_memory.semantic_memory.concepts.memory_extractor import MemoryExtractor
-from memory.long_term_memory.episodic_memory.episode_service import EpisodeService
-from memory.storage.graph_memory.graph_service import GraphMemoryService
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
-
-from brain.cortex.workspace.state_extractor import StateExtractor
-from brain.cortex.workspace.state_manager_service import StateManager
-from brain.cortex.workspace.context_builder import ContextBuilder
-
-from mind.self_model.self_model_service import SelfModelService
-from mind.self_model.self_model_formatter import SelfModelFormatter
-from mind.identity.identity_service import IdentityService
+from models.python.conversation.content_block import ContentBlock
+from models.python.conversation.converstation_message import ConversationMessage
 
 from nervous_system.signal_bus.schemas.tool_schemas import TOOL_SCHEMAS
 
-from actions.tools.tool_application.tool_executor import ToolExecutor
+from infrastructure.containers.container import Container
+
 
 
 MAX_TOOL_ROUNDS = 5
 
 
-# -------------- CORE ----------------
+# -------------- INITS ----------------
 class Orchestrator:
 
-    def __init__(self):
-        self.advisor = AdvisorService()
+    def __init__(self, container: Container):
+        self.container = container
 
-        self.memory = MemoryService(advisor_service=self.advisor)
-        self.conversation = ConversationService()
-        self.tool_executor = ToolExecutor(self.memory)
-        self.state_manager = StateManager()
-        self.graph_memory = GraphMemoryService()
-        self.identity = IdentityService()
+        self.advisor = container.advisor_service
+        self.memory = container.memory_service
+        self.conversation = container.conversation_service
+        self.tool_executor = container.tool_executor
 
-        self.self_model = SelfModelService(memory_service=self.memory, identity_service=self.identity)
-        self.self_model_formatter = SelfModelFormatter()
+        self.state_manager = container.state_manager
+        self.graph_memory = container.graph_memory_service
 
-        self.episode_service = EpisodeService(advisor=self.advisor, memory_service=self.memory)
+        self.identity = container.identity_service
+        self.goal_manager = container.goal_manager
+        self.self_model = container.self_model_service
 
-        self.context_builder = ContextBuilder(
-            memory_service=self.memory, 
-            conversation_service=self.conversation, 
-            state_manager=self.state_manager,
-            identity_service=self.identity,
-        )
-        self.memory_extractor = MemoryExtractor(advisor_service=self.advisor, memory_service=self.memory, graph_memory=self.graph_memory)
-        self.state_extractor = StateExtractor(advisor_service=self.advisor)
+        self.episode_service = container.episode_service
+        self.memory_gate = container.memory_gate
+        self.memory_extractor = container.memory_extractor
+
+        self.state_extractor = container.state_extractor
+
+        self.cache_service = container.cache_service
+        self.context_builder = container.context_builder
 
 
+    # --------------- CORE ----------------
     async def process(self, session_id: str, msg: str):
-        """FLOW: user msg -> store convo -> build context -> LLM call ->
-                -> tool call? -> execute tool -> continue LLM ->
-            -> store response -> extract memories -> return response
-        """
+
+        # STEP 0: CLEAR OLD CACHE DATA
+        session_cache = self.cache_service.session(session_id)
+        self.cache_service.clear_message()
         
+
         # STEP 1: STORE USER MSG
         user_message_id = await self.conversation.store_message(
             session_id=session_id,
@@ -73,9 +63,9 @@ class Orchestrator:
         )
 
         # STEP 2: BUILD CONTEXT
-        context = await self.context_builder.build(session_id=session_id, query=msg)
-        snapshot = await self.self_model.snapshot()
-        formatted_snap = self.self_model_formatter.format(snapshot=snapshot)
+        cognitive_context = await self.context_builder.build(session_id=session_id, query=msg, cache=self.cache_service.cache)
+
+        self.cache_service.cache.message.prompt = cognitive_context.render()
 
         # STEP 3: BUILD INITIAL MESSAGES
         messages = [
@@ -84,11 +74,7 @@ class Orchestrator:
                 content=[
                     ContentBlock(
                         type="text",
-                        content=formatted_snap,
-                    ),
-                    ContentBlock(
-                        type="text",
-                        content=context,
+                        content=cognitive_context.render(),
                     ),
                 ]
             ),
@@ -107,12 +93,14 @@ class Orchestrator:
         tool_results = []
 
         for _ in range(MAX_TOOL_ROUNDS):
+            print(f"[DEBUG][ORCHESTRATOR][{datetime.now():%X}] Prompt sent to API: {messages}")
+
             response = await self.advisor.ask(
                 task="reasoning", 
                 messages=messages,
             )
 
-            print(f"[GIDEON][ORC] {response}")
+            print(f"[DEBUG][GIDEON][ORCHESTRATOR][{datetime.now():%X}] {response}")
 
             if response is None:
                 raise RuntimeError("AdvisorService returned None. Check Advisor Logs")
@@ -164,14 +152,13 @@ class Orchestrator:
             ),
         )
 
-        # STEP 5: EPISODIC MEMORY EXTRACTION
+        # STEP 5: EPISODIC + MEMORY EXTRACTION
         await self.episode_service.add_interaction(session_id=session_id, user_msg=msg, gideon_msg=answer)
+        await self.episode_service.schedule_finalize(session_id)
 
         episode_id = None
 
-        if await self.episode_service.should_finalize_episode(session_id=session_id):
-            episode_id = await self.episode_service.create_episode(session_id=session_id)
-            
+        if self.memory_gate.should_extract(user_msg=msg, gideon_msg=answer):
             await self.memory_extractor.extract(
                 user_msg=msg, 
                 gideon_response=answer, 
@@ -179,10 +166,12 @@ class Orchestrator:
                 episode_id=episode_id
             )
 
-            state = self.state_manager.get_state(session_id=session_id)
-            updates = await self.state_extractor.extract(state=state, user_msg=msg, gideon_msg=answer)
+            await self.refresh_boot_cache()
 
-            self.state_manager.update(session_id, **updates)
+        state = self.state_manager.get_state(session_id=session_id)
+        updates = await self.state_extractor.extract(state=state, user_msg=msg, gideon_msg=answer)
+
+        self.state_manager.update(session_id, **updates)
 
 
         # STEP 6: RETURN RESPONSE

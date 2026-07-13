@@ -1,5 +1,7 @@
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
+from datetime import datetime
+
+from models.python.conversation.content_block import ContentBlock
+from models.python.conversation.converstation_message import ConversationMessage
 
 
 class MemoryCanonicalizer:
@@ -49,23 +51,25 @@ class MemoryCanonicalizer:
             {content}
         """
 
-        print(f"[DEBUG][CANON] Prompt sent to API: {prompt}")
+        messages=[
+            ConversationMessage(
+                role="user",
+                content=[
+                    ContentBlock(
+                        type="text",
+                        content=prompt,
+                    ),
+                ]
+            )
+        ],
+
+        print(f"[DEBUG][CANONICALIZER][{datetime.now():%X}] Prompt sent to API: {messages}")
 
         response = await self.advisor.ask(
             task="summarization",
-            messages=[
-                ConversationMessage(
-                    role="user",
-                    content=[
-                        ContentBlock(
-                            type="text",
-                            content=prompt,
-                        ),
-                    ]
-                )
-            ],
+            messages=messages,
         )
 
-        print(f"[GIDEON][CANONICALIZER] {response}")
+        print(f"[DEBUG][GIDEON][CANONICALIZER][{datetime.now():%X}] {response}")
 
         return response.content.strip()

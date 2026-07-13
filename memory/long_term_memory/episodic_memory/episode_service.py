@@ -1,10 +1,12 @@
 import uuid
+import asyncio
+
 from datetime import datetime, UTC
 
-from memory.memory_models.basic_memory.memory_type import MemoryType
-from memory.memory_models.provenance import Provenance
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
+from models.python.memory.enums.memory_type import MemoryType
+from models.python.memory.provenance import Provenance
+from models.python.conversation.content_block import ContentBlock
+from models.python.conversation.converstation_message import ConversationMessage
 
 
 class EpisodeService:
@@ -17,6 +19,13 @@ class EpisodeService:
 
         self.buffers = {}
         self.last_activity = {}
+
+        self.active_jobs = set()
+
+
+    async def boot(self):
+        print("[EPISODE] Ready.")
+
 
     # ---------- HELPERS ----------
     # only store dialogue
@@ -65,14 +74,34 @@ class EpisodeService:
         if elapsed > self.EPISODE_TIMEOUT:
             return True
         
-        return len(self.buffers[session_id]) >= 20        
+        return len(self.buffers[session_id]) >= 20
+    
 
+    async def schedule_finalize(self, session_id: str):
+        if session_id in self.active_jobs:
+            return 
+        
+        if not await self.should_finalize_episode(session_id):
+            return
+        
+        self.active_jobs.add(session_id)
+        
+        asyncio.create_task(self._background_finalize(session_id))
+
+
+    async def _background_finalize(self, session_id):
+        try:
+            await self.finalize_episode(session_id)
+
+        finally:
+            self.active_jobs.discard(session_id)
 
 
     # ---------- CORE -----------
-    async def create_episode(self, session_id: str):
+    async def finalize_episode(self, session_id: str):
         
-        events = self.buffers.get(session_id, [])
+        events = self.buffers.pop(session_id, [])
+        self.last_activity.pop(session_id, None)
 
         # skip tiny conversations for more meaningful interactions
         if len(events) < 3:
@@ -100,25 +129,26 @@ class EpisodeService:
             {transcript}
         """
 
-        print(f"[DEBUG][EPISODE] Prompt sent to API: {prompt}")
+        messages=[
+            ConversationMessage(
+                role="user",
+                content=[
+                    ContentBlock(
+                        type="text",
+                        content=prompt,
+                    )
+                ]
+            )
+        ]
+
+        print(f"[DEBUG][EPISODE][{datetime.now():%X}] Prompt sent to API: {messages}")
 
         response = await self.advisor.ask(
             task="summarization",
-            messages=[
-                ConversationMessage(
-                    role="user",
-                    content=[
-                        ContentBlock(
-                            type="text",
-                            content=prompt,
-                        )
-                    ]
-                )
-                
-            ]
+            messages=messages,
         )
 
-        print(f"[GIDEON][EPISODE] {response}")
+        print(f"[DEBUG][GIDEON][EPISODE][{datetime.now():%X}] {response}")
 
         summary = response.content
 

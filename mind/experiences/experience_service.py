@@ -1,10 +1,14 @@
-from memory.memory_models.basic_memory.memory_type import MemoryType
+from models.python.memory.enums.memory_type import MemoryType
 
 
 class ExperienceService:
 
     def __init__(self, memory_service):
         self.memory = memory_service
+
+
+    async def boot(self):
+        print("[EXPERIENCE] Ready.")
 
 
     async def all(self):

@@ -1,4 +1,4 @@
-from actions.tools.tool_models.tool_definition import ToolDefinition
+from models.python.tool_models.tool_definition import ToolDefinition
 
 
 class ToolRegistry:

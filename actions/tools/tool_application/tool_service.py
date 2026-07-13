@@ -6,16 +6,18 @@ from actions.communication.email.email import EmailTool
 from actions.system.system_monitor.system_monitor import SystemMonitorTool
 from actions.system.web_search.web_search import WebSearchTool
 from brain.frontal_lobe.goal_management.goals import GoalTool
+from brain.frontal_lobe.goal_management.goal_manager import GoalManager
 
 
 class ToolService:
 
     def __init__(self, memory_service):
         self.memory = memory_service
+        self.goal_manager = GoalManager(self.memory)
 
         self.tools = {
             "filesystem": FileSystemTool(),
-            "goals": GoalTool(memory_service=self.memory),
+            "goals": GoalTool(memory_service=self.memory, goal_manager=self.goal_manager),
             "notes": NotesTool(),
             "reminders": ReminderTool(),
             "calendar": CalendarTool(),
@@ -23,6 +25,7 @@ class ToolService:
             "system_monitor": SystemMonitorTool(),
             "web_search": WebSearchTool(),
         }
+
 
     def get_tool(self, name):
         return self.tools.get(name)

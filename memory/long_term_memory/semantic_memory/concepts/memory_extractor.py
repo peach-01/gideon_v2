@@ -1,10 +1,11 @@
 import json
 import re
+from datetime import datetime
 
-from memory.memory_models.basic_memory.memory_type import MemoryType
-from memory.memory_models.provenance import Provenance
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
+from models.python.memory.enums.memory_type import MemoryType
+from models.python.memory.provenance import Provenance
+from models.python.conversation.content_block import ContentBlock
+from models.python.conversation.converstation_message import ConversationMessage
 
 
 # ------------- HELPER --------------
@@ -25,39 +26,22 @@ class MemoryExtractor:
 
     async def extract(self, user_msg: str, gideon_response: str, message_id, episode_id):
         prompt = f"""
-            Extract durable memories only.
+            Extract durable memories only from this interaction.
+            Only return information likely to remain true or useful in the future.
 
-            Rules:
-            - Extract durable facts
-            - Extract user preferences
-            - Extract goals
-            - Extract projects
-            - Extract people
-            - Extract relationships
-            - Extract locations
-            - Extract workflows
-            - Extract life events
-            - Extract skills
-            - Extract important decisions
-
-            - Ignore temporary requests
-            - Ignore greetings
-            - Ignore conversational fluff
-            - Ignore small talk
-
-            Valid memory_types:
-                fact
-                preference
-                goal
-                project
-                person
-                relationship
-                location
-                workflow
-                life_event
-                skill
-                decision
-
+            Extract (as a memory_type translated to singular tense):
+            - facts
+            - preferences
+            - goals
+            - projects
+            - people
+            - relationships
+            - locations
+            - workflows
+            - life events
+            - skills
+            - decisions
+            
             Return ONLY JSON.
 
             Example:
@@ -96,7 +80,19 @@ class MemoryExtractor:
         """
 
         try:
-            print(f"[DEBUG][MEMORY] Prompt sent to API: {prompt}")
+            messages = [
+                ConversationMessage(
+                    role="user",
+                    content=[
+                        ContentBlock(
+                            type="text",
+                            content=prompt,
+                        ),
+                    ]
+                )
+            ],
+
+            print(f"[DEBUG][MEMORY][{datetime.now():%X}] Prompt sent to API: {messages}")
 
             response = await self.advisor.ask(
                 system_prompt="""
@@ -105,21 +101,11 @@ class MemoryExtractor:
                     
                     Return JSON only.
                 """,
-                messages=[
-                    ConversationMessage(
-                        role="user",
-                        content=[
-                            ContentBlock(
-                                type="text",
-                                content=prompt,
-                            ),
-                        ]
-                    )
-                ],
+                messages=messages,
                 task="extraction"
             )
 
-            print(f"[GIDEON][MEMORY] {response}")
+            print(f"[DEBUG][GIDEON][MEMORY][{datetime.now():%X}] {response}")
 
             results = (
                 response.structured_date if response.structured_data

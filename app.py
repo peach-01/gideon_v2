@@ -1,14 +1,20 @@
 import asyncio
 import uuid
 
+from infrastructure.containers.container import Container
 from runtime.orchestrator import Orchestrator
 
 
 async def main():
 
-    orc = Orchestrator()
+    container = Container()
+
+    await container.boot_manager.boot()
+
+    orc = Orchestrator(container)
 
     session_id = str(uuid.uuid4())
+
 
     while True:
 

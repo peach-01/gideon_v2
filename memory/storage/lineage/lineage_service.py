@@ -8,6 +8,10 @@ from infrastructure.databases.postgres_models import MemoryLineageRecord
 
 class LineageService:
 
+    async def boot(self):
+        print("[LINEAGE-MEMORY] Ready.")
+
+
     async def add_link(self, child_memory_id: str, parent_memory_id: str, relationship_type: str):
         db = SessionLocal()
 

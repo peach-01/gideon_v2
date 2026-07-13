@@ -1,10 +1,11 @@
-from mind.beliefs.belief_service import BeliefService
-
-
 class ReflectionService:
 
-    def __init__(self):
-        self.beliefs = BeliefService()
+    def __init__(self, belief_service):
+        self.beliefs = belief_service
+
+
+    async def boot(self):
+        print("[REFLECTION] Ready.")
 
 
     def process_experience(self, experience):

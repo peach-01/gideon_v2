@@ -1,5 +1,7 @@
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.content_block import ContentBlock
-from memory.long_term_memory.episodic_memory.conversations.conversation_models.converstation_message import ConversationMessage
+from datetime import datetime
+
+from models.python.conversation.content_block import ContentBlock
+from models.python.conversation.converstation_message import ConversationMessage
 
 
 class ResearchAgent:
@@ -24,21 +26,27 @@ class ResearchAgent:
                 "summary": "...",
                 "sources": []
             }}
-            """
+        """
+
+        messages=[
+            ConversationMessage(
+                role="user",
+                content=[
+                    ContentBlock(
+                        type="text",
+                        content=prompt,
+                    )
+                ]
+            )
+        ]
+        
+        print(f"[DEBUG][RESEARCH][{datetime.now():%X}] Prompt sent to API: {messages}")
         
         response = await self.advisor.ask(
             task="research",
-            messages=[
-                ConversationMessage(
-                    role="user",
-                    content=[
-                        ContentBlock(
-                            type="text",
-                            content=prompt,
-                        )
-                    ]
-                )
-            ]
-        )        
+            messages=messages,
+        )
+
+        print(f"[DEBUG][GIDEON][RESEARCH][{datetime.now():%X}] {response}")
 
         return response.content

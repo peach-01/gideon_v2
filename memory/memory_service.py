@@ -7,11 +7,13 @@ from infrastructure.databases.postgres_models import MemoryRecord
 
 from memory.long_term_memory.semantic_memory.embeddings.embedding_service import EmbeddingService
 from memory.storage.vector_memory.vector_memory_service import VectorMemoryService
-from memory.memory_models.basic_memory.memory_type import MemoryType
+from models.python.memory.enums.memory_type import MemoryType
 from memory.long_term_memory.semantic_memory.relations.canonicalizer import MemoryCanonicalizer
 from memory.storage.lineage.lineage_service import LineageService
-from memory.memory_models.provenance import Provenance
-from memory.memory_models.tier_mapper import get_tier
+from models.python.memory.provenance import Provenance
+from models.python.memory.tier_mapper import get_tier
+from models.python.memory.memory_statistics import MemoryStatistics, SemanticSummary
+
 
 # Typical values: 0.70 = loose; 0.75 = balanced; 0.80 = strict; 0.85 = very strict
 SIMILARITY_THRESHOLD = 0.78
@@ -28,6 +30,7 @@ def rank(memory):
         log(memory.access_count + 1) * 0.20
     )
 
+
 class MemoryService:
 
     def __init__(self, advisor_service):
@@ -37,6 +40,10 @@ class MemoryService:
         self.vector_service = VectorMemoryService()
         self.canonicalizer = MemoryCanonicalizer(advisor_service=self.advisor)
         self.lineage = LineageService()
+
+
+    async def boot(self):
+        print("[MEMORY] Ready.")
 
     
     def reinforce(self, confidence: float):
@@ -126,6 +133,9 @@ class MemoryService:
             db.close()
 
 
+
+    # --------- SEARCH ----------
+
     async def search(self, query: str, memory_types: list=None, limit: int=10):
         db = SessionLocal()
 
@@ -206,3 +216,80 @@ class MemoryService:
             m for m in results
             if m.memory_tier == tier
         ][:limit]
+    
+ 
+
+    # ------- BOOT / CACHE --------
+ 
+    async def statistics(self) -> MemoryStatistics:
+        db = SessionLocal()
+
+        try:
+            memories = db.query(MemoryRecord).all()
+
+            if not memories:
+                return MemoryStatistics(total_memories=0)
+
+            by_type = {}
+            by_tier = {}
+
+            confidence = 0
+            importance = 0
+
+            newest = None
+
+            for memory in memories:
+
+                by_type[memory.memory_type] = by_type.get(memory.memory_type, 0) + 1
+                by_tier[memory.memory_tier] = by_tier.get(memory.memory_tier, 0) + 1
+
+                confidence += memory.confidence
+                importance += memory.importance
+
+                if newest is None or memory.created_at > newest:
+                    newest = memory.created_at
+
+            return MemoryStatistics(
+                total_memories=len(memories),
+                by_type=by_type,
+                by_tier=by_tier,
+                average_confidence=confidence / len(memories),
+                average_importance=importance / len(memories),
+                most_recent=newest,
+            )
+
+        finally:
+            db.close()
+
+
+    async def semantic_summary(self) -> SemanticSummary:
+        db = SessionLocal()
+
+        try:
+
+            summary = SemanticSummary()
+            memories = db.query(MemoryRecord).order_by(MemoryRecord.importance.desc()).all()
+
+            buckets = {
+                "person": summary.people,
+                "project": summary.projects,
+                "goal": summary.goals,
+                "preference": summary.preferences,
+                "skill": summary.skills,
+                "decision": summary.decisions,
+                "task": summary.tasks,
+                "system": summary.systems,
+            }
+
+            for memory in memories:
+                bucket = buckets.get(memory.memory_type)
+                if bucket is None:
+                    continue
+
+                if len(bucket) < 15:
+                    bucket.append(memory.content)
+
+            return summary
+
+        finally:
+            db.close()
