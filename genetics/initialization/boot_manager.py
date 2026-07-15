@@ -70,8 +70,6 @@ class BootManager:
 
         await self.container.self_model_service.boot()
 
-        await self.container.state_extractor.boot()
-
         await self.container.state_manager.boot()
 
 
@@ -84,4 +82,4 @@ class BootManager:
 
     async def build_cache(self):
 
-        await self.container.cache_service.refresh_cache()
+        await self.container.cache_service.refresh_boot()

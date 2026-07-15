@@ -1,14 +1,27 @@
-from pydantic import BaseModel, Field
+from models.python.memory.state import SessionState
+
+class StateManager:
+
+    def __init__(self):
+        self.sessions = {}
 
 
-class SessionState(BaseModel):
+    async def boot(self):
+        print("[STATE-MANAGER] Ready.")
 
-    active_goal: str | None = None
 
-    active_project: str | None = None
+    def get_state(self, session_id: str):
+        if session_id not in self.sessions:
+            self.sessions[session_id] = SessionState()
 
-    current_task: str | None = None
+        return self.sessions[session_id]
 
-    conversation_mode: str = "chat"
 
-    tool_chain: list[str] = Field(default_factory=list)
+    def update(self, session_id: str, **updates):
+        state = self.get_state(session_id=session_id)
+
+        for k, v in updates.items():
+            if hasattr(state, k):
+                setattr(state, k, v)
+
+        return state

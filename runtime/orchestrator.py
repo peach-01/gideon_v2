@@ -1,7 +1,10 @@
+import asyncio
+
 from datetime import datetime, UTC
 
 from models.python.conversation.content_block import ContentBlock
 from models.python.conversation.converstation_message import ConversationMessage
+from models.python.awareness.processing_context import ProcessingContext
 
 from nervous_system.signal_bus.schemas.tool_schemas import TOOL_SCHEMAS
 
@@ -32,9 +35,8 @@ class Orchestrator:
 
         self.episode_service = container.episode_service
         self.memory_gate = container.memory_gate
-        self.memory_extractor = container.memory_extractor
 
-        self.state_extractor = container.state_extractor
+        self.cognition_extractor = container.cognition_extractor
 
         self.cache_service = container.cache_service
         self.context_builder = container.context_builder
@@ -42,39 +44,71 @@ class Orchestrator:
 
     # --------------- CORE ----------------
     async def process(self, session_id: str, msg: str):
-
-        # STEP 0: CLEAR OLD CACHE DATA
-        session_cache = self.cache_service.session(session_id)
-        self.cache_service.clear_message()
         
+        self.cache_service.ensure_session(session_id)
+        self.cache_service.clear_message()
 
-        # STEP 1: STORE USER MSG
-        user_message_id = await self.conversation.store_message(
+        ctx = ProcessingContext(
             session_id=session_id,
+            user_message=msg
+        )
+
+        await self._store_user_message(ctx)
+        await self._build_context(ctx)
+        await self._reason(ctx)
+        await self._store_response(ctx)
+
+        asyncio.create_task(self._learn(ctx))
+        
+        return ctx.answer
+    
+
+
+    # -------- ASYNCED PROCESSING ---------
+    async def _learn(self, ctx):
+        try: 
+            await self._extract_memories(ctx)
+            await self.cache_service.refresh_boot()
+
+        except Exception:
+            print("[ERROR][ORC] Learning pipline failed")
+
+
+    # ------------- BUILDERS ---------------
+    async def _store_user_message(self, ctx: ProcessingContext):
+        ctx.user_message_id = await self.conversation.store_message(
+            session_id=ctx.session_id,
             message=ConversationMessage(
                 role="user",
                 content=[
                     ContentBlock(
                         type="text",
-                        content=msg,
+                        content=ctx.user_message,
                     )
                 ]
             ),
         )
 
-        # STEP 2: BUILD CONTEXT
-        cognitive_context = await self.context_builder.build(session_id=session_id, query=msg, cache=self.cache_service.cache)
 
-        self.cache_service.cache.message.prompt = cognitive_context.render()
+    async def _build_context(self, ctx: ProcessingContext):
+        ctx.cognitive_context = await self.context_builder.build(
+            session_id=ctx.session_id, 
+            query=ctx.user_message, 
+            cache=self.cache_service.cache
+        )
 
-        # STEP 3: BUILD INITIAL MESSAGES
-        messages = [
+        ctx.prompt = ctx.cognitive_context.render()
+
+        self.cache_service.cache.message.prompt = ctx.prompt
+
+        # BUILD INITIAL MESSAGES
+        ctx.llm_messages = [
             ConversationMessage(
                 role="system",
                 content=[
                     ContentBlock(
                         type="text",
-                        content=cognitive_context.render(),
+                        content=ctx.prompt,
                     ),
                 ]
             ),
@@ -83,21 +117,20 @@ class Orchestrator:
                 content=[
                     ContentBlock(
                         type="text",
-                        content=msg,
+                        content=ctx.user_message,
                     )
                 ]
             )
         ]
 
-        # STEP 3: LLM + TOOL LOOP
-        tool_results = []
 
+    async def _reason(self, ctx: ProcessingContext):
         for _ in range(MAX_TOOL_ROUNDS):
-            print(f"[DEBUG][ORCHESTRATOR][{datetime.now():%X}] Prompt sent to API: {messages}")
+            print(f"[DEBUG][ORCHESTRATOR][{datetime.now():%X}] Prompt sent to API: {ctx.llm_messages}")
 
             response = await self.advisor.ask(
                 task="reasoning", 
-                messages=messages,
+                messages=ctx.llm_messages,
             )
 
             print(f"[DEBUG][GIDEON][ORCHESTRATOR][{datetime.now():%X}] {response}")
@@ -116,63 +149,63 @@ class Orchestrator:
             )
 
             if response.tool_calls:
-                tool_call = ContentBlock(
-                    type="text",
-                    content=response.tool_calls
+                gideon_msg.content.append(
+                    ContentBlock(
+                        type="text",
+                        content=response.tool_calls
+                    )
                 )
 
-                gideon_msg.content.append(tool_call)
 
-            messages.append(gideon_msg)
+                ctx.llm_messages.append(gideon_msg)
 
-            if not response.tool_calls:
-                answer = response.content
-                break
+                ctx.tool_results = await self.tool_executor.execute(tool_calls=response.tool_calls)
+                
+                ctx.llm_messages.extend(ctx.tool_results)
 
-            results = await self.tool_executor.execute(tool_calls=response.tool_calls)
-            
-            tool_results.extend(results)
-            messages.extend(results)
+                continue
+        
+            ctx.answer = response.content
+
+            return
 
         # Safe fallback
-        else:
-            answer = "Max tool execution rounds reached."
+        ctx.answer = "Max tool execution rounds reached."
 
-        # STEP 4: STORE RESPONSE
+
+    async def _store_response(self, ctx: ProcessingContext):
         await self.conversation.store_message(
-            session_id=session_id,
+            session_id=ctx.session_id,
             message=ConversationMessage(
                 role="gideon",
                 content=[
                     ContentBlock(
                         type="text",
-                        content=answer,
+                        content=ctx.answer,
                     )
                 ]
             ),
         )
 
-        # STEP 5: EPISODIC + MEMORY EXTRACTION
-        await self.episode_service.add_interaction(session_id=session_id, user_msg=msg, gideon_msg=answer)
-        await self.episode_service.schedule_finalize(session_id)
 
-        episode_id = None
+    # pure learning phase
+    async def _extract_memories(self, ctx: ProcessingContext):
+        await self.episode_service.add_interaction(
+            session_id=ctx.session_id, 
+            user_msg=ctx.user_message, 
+            gideon_msg=ctx.answer
+        )
 
-        if self.memory_gate.should_extract(user_msg=msg, gideon_msg=answer):
-            await self.memory_extractor.extract(
-                user_msg=msg, 
-                gideon_response=answer, 
-                message_id=user_message_id, 
-                episode_id=episode_id
+        await self.episode_service.schedule_finalize(ctx.session_id)
+
+        if self.memory_gate.should_extract(user_msg=ctx.user_message, gideon_msg=ctx.answer):
+            await self.cognition_extractor.extract(
+                user_msg=ctx.user_message, 
+                gideon_response=ctx.answer,
+
+                message_id=ctx.user_message_id, 
+                episode_id=ctx.episode_id,
+                session_id=ctx.session_id,
+
+                context=ctx,
             )
-
-            await self.refresh_boot_cache()
-
-        state = self.state_manager.get_state(session_id=session_id)
-        updates = await self.state_extractor.extract(state=state, user_msg=msg, gideon_msg=answer)
-
-        self.state_manager.update(session_id, **updates)
-
-
-        # STEP 6: RETURN RESPONSE
-        return answer

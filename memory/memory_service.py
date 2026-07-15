@@ -5,11 +5,7 @@ from math import log
 from infrastructure.databases.postgres import SessionLocal
 from infrastructure.databases.postgres_models import MemoryRecord
 
-from memory.long_term_memory.semantic_memory.embeddings.embedding_service import EmbeddingService
-from memory.storage.vector_memory.vector_memory_service import VectorMemoryService
 from models.python.memory.enums.memory_type import MemoryType
-from memory.long_term_memory.semantic_memory.relations.canonicalizer import MemoryCanonicalizer
-from memory.storage.lineage.lineage_service import LineageService
 from models.python.memory.provenance import Provenance
 from models.python.memory.tier_mapper import get_tier
 from models.python.memory.memory_statistics import MemoryStatistics, SemanticSummary
@@ -33,13 +29,10 @@ def rank(memory):
 
 class MemoryService:
 
-    def __init__(self, advisor_service):
-        self.advisor = advisor_service
-
-        self.embedder = EmbeddingService()
-        self.vector_service = VectorMemoryService()
-        self.canonicalizer = MemoryCanonicalizer(advisor_service=self.advisor)
-        self.lineage = LineageService()
+    def __init__(self, embedding_service, vector_service, lineage_service):
+        self.embedder = embedding_service
+        self.vector_service = vector_service
+        self.lineage = lineage_service
 
 
     async def boot(self):
@@ -55,10 +48,7 @@ class MemoryService:
 
         try:
             # memory deduplication
-            canonical_content = await self.canonicalizer.canonicalize(
-                content=content, 
-                memory_type=str(memory_type)
-            )
+            canonical_content = " ".join(content.split())
 
             existing = db.query(MemoryRecord).filter(MemoryRecord.canonical_content == canonical_content).first()
             if existing:

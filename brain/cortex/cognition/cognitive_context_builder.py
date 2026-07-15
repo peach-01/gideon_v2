@@ -8,18 +8,19 @@ from models.python.awareness.cognitive_cache import SessionCache
 
 class ContextBuilder:
 
-    def __init__(self, memory_service, conversation_service, state_manager, identity_service, cache, goal_manager):
-        self.memory = memory_service
+    def __init__(self, conversation_service, state_manager, cache_service, memory_service):
         self.conversation = conversation_service
         self.state_manager = state_manager
-        self.identity_service = identity_service
-        self.cache = cache
-        self.goals = goal_manager
+        self.memory_service = memory_service
+        self.cache = cache_service
 
 
     async def build(self, session_id: str, query: str, cache):
+        boot = cache.boot
+        session = cache.sessions.setdefault(session_id, SessionCache())
+        message = cache.message
+
         state = self.state_manager.get_state(session_id)
-        session = self.cache.sessions.setdefault(session_id, SessionCache())
 
         working_memory = [
             f"Active Goal: {state.active_goal}",
@@ -32,7 +33,7 @@ class ContextBuilder:
             limit=20,
         )
 
-        memories = await self.memory.search(
+        memories = await self.memory_service.search(
             query=query,
             memory_types=[
                 "fact", "preference", "goal", "project", "person",
@@ -41,33 +42,27 @@ class ContextBuilder:
             limit=15,
         )
         
-        self.cache.message.retrieval_results = memories
-
+        message.retrieval_results = memories
         session.last_memories = memories
-        
 
         # check cache for goals before recomputing
-        goals = session.goals
+        if session.goals is None:
+            semantic = boot.semantic_summary
 
-        if goals is None:
-            goals = self.cache.boot.semantic_summary.goals
-            session.goals = goals
-
-
-        self_model_section = cache.boot.rendered_identity
-
-        goal_lines = self._build_goals(goals)
-        memory_lines = self._build_memories(memories)
-        conversation_lines = self._build_conversation(recent_messages)
+            if semantic:
+                session.goals = semantic.goals
+            else:
+                session.goals = []
 
         return CognitiveContext(
-            identity=self_model_section,
-            working_state=working_memory,
-            goals=goal_lines,
-            memories=memory_lines,
-            conversation=conversation_lines,
+            identity = boot.rendered_identity,
+            working_state = working_memory,
+            goals = self._build_goals(session.goals),
+            memories = self._build_memories(memories),
+            conversation = self._build_conversation(recent_messages),
         )
     
+
 
     # ------------ FORMATTERS -------------
     def _build_goals(self, goals):
@@ -79,6 +74,7 @@ class ContextBuilder:
             for goal in goals
         ]
 
+
     def _build_memories(self, memories):
         if not memories:
             return "None"
@@ -87,6 +83,7 @@ class ContextBuilder:
             f"[{m.memory_type}] {m.context}"
             for m in memories
         ]
+
 
     def _build_conversation(self, messages: list[ConversationMessage]):
         if not messages:
