@@ -12,12 +12,13 @@ from models.python.conversation.content_block import ContentBlock
 
 class ConversationService:
 
-
     async def boot(self):
         print("[CONVERSATION] Ready.")
 
 
     async def store_message(self, session_id: str, message: ConversationMessage):
+        print("[DEBUG][CONVO] STORE REQUEST:", message)
+        
         db = SessionLocal()
 
         for record in db.query(MessageRecord).all():
@@ -106,6 +107,28 @@ class ConversationService:
                 ]))
 
             return q.order_by(MessageRecord.timestamp.desc()).limit(limit).all()
+
+        finally:
+            db.close()
+
+
+    async def summary(self):
+
+        db = SessionLocal()
+
+        try:
+            rows = db.query(MessageRecord).order_by(MessageRecord.timestamp.desc()).limit(50).all()
+
+            return {
+                "messages": [
+                    {
+                        "session_id": r.session_id,
+                        "content": r.content,
+                        "timestamp": r.timestamp.isoformat()
+                    }
+                    for r in reversed(rows)
+                ]
+            }
 
         finally:
             db.close()

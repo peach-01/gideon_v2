@@ -1,4 +1,5 @@
-from models.python.memory.state import SessionState
+from models.python.working_state.state import SessionState
+import pickle
 
 class StateManager:
 
@@ -25,3 +26,19 @@ class StateManager:
                 setattr(state, k, v)
 
         return state
+    
+
+    # ------------ SLEEP / WAKE SUPPORT ------------
+    async def save_runtime_state(self, runtime_state):
+        with open("runtime_state.pkl", "wb") as f:
+            pickle.dump(runtime_state, f)        
+
+        print("[STATE-MANAGER] Runtime snapshot saved.")
+
+
+    async def load_runtime_state(self):
+        try:
+            with open("runtime_state.pkl", "rb") as f:
+                return pickle.load(f)
+        except FileNotFoundError:
+            return None

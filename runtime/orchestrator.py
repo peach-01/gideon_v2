@@ -5,6 +5,7 @@ from datetime import datetime, UTC
 from models.python.conversation.content_block import ContentBlock
 from models.python.conversation.converstation_message import ConversationMessage
 from models.python.awareness.processing_context import ProcessingContext
+from models.python.working_state.runtime_state import RuntimeState
 
 from nervous_system.signal_bus.schemas.tool_schemas import TOOL_SCHEMAS
 
@@ -19,6 +20,13 @@ MAX_TOOL_ROUNDS = 5
 class Orchestrator:
 
     def __init__(self, container: Container):
+
+        # runtime variables
+        self.running = True
+        self.background_tasks = []
+        self.sessions = set()
+
+        # core services
         self.container = container
 
         self.advisor = container.advisor_service
@@ -44,6 +52,10 @@ class Orchestrator:
 
     # --------------- CORE ----------------
     async def process(self, session_id: str, msg: str):
+
+        if not self.running:
+            raise RuntimeError("Orchestrator sleeping. Call wake() first.")
+        self.sessions.add(session_id)
         
         self.cache_service.ensure_session(session_id)
         self.cache_service.clear_message()
@@ -58,10 +70,65 @@ class Orchestrator:
         await self._reason(ctx)
         await self._store_response(ctx)
 
-        asyncio.create_task(self._learn(ctx))
+        task = asyncio.create_task(self._learn(ctx))
+        self.background_tasks.append(task)
         
         return ctx.answer
     
+
+    async def sleep(self):
+        print("[ORC] Entering sleep mode")
+        self.running = False
+
+        await self._flush_learning()
+
+        # stop accepting new work
+        await self._pause_background_tasks()
+
+        runtime_state = RuntimeState(
+            status="sleeping",
+            session_ids=list(self.sessions),
+
+            pending_tasks=await self._collect_pending_tasks(),
+            pending_reflections=await self._collect_reflections(),
+
+            conversation_summary=await self._save_conversation_summary(),
+
+            model_state=await self._save_model_state(),
+            boot_cache=self.cache_service.cache,
+        )
+
+        await self.state_manager.save_runtime_state(runtime_state)
+        await self.cache_service.refresh_boot()
+
+        print("[ORC] Sleeping. State persisted.")
+
+
+
+    async def wake(self):
+        print("[ORC] Waking...")
+        state = await self.state_manager.load_runtime_state()
+
+        if not state:
+            print("[ORC] No sleep state found.")
+            self.running = True
+            return
+
+        self.sessions.update(state.session_ids)
+
+        await self._restore_tasks(state.pending_tasks)
+        await self._restore_reflections(state.pending_reflections)
+        await self._restore_model_state(state.model_state)
+
+        self.cache_service.cache = (state.boot_cache)
+
+        self.running = True
+
+
+        asyncio.create_task(self._resume_background_jobs())
+
+        print("[ORC] Awake.")
+
 
 
     # -------- ASYNCED PROCESSING ---------
@@ -72,6 +139,12 @@ class Orchestrator:
 
         except Exception:
             print("[ERROR][ORC] Learning pipline failed")
+
+        finally:
+            current = asyncio.current_task()
+
+            if current in self.background_tasks:
+                self.background_tasks.remove(current)
 
 
     # ------------- BUILDERS ---------------
@@ -190,6 +263,8 @@ class Orchestrator:
 
     # pure learning phase
     async def _extract_memories(self, ctx: ProcessingContext):
+        print("[LEARNING] extracting")
+
         await self.episode_service.add_interaction(
             session_id=ctx.session_id, 
             user_msg=ctx.user_message, 
@@ -199,6 +274,7 @@ class Orchestrator:
         await self.episode_service.schedule_finalize(ctx.session_id)
 
         if self.memory_gate.should_extract(user_msg=ctx.user_message, gideon_msg=ctx.answer):
+            print("[DEBUG][ORC] Memory extraction gate passed. Starting extract...")
             await self.cognition_extractor.extract(
                 user_msg=ctx.user_message, 
                 gideon_response=ctx.answer,
@@ -209,3 +285,61 @@ class Orchestrator:
 
                 context=ctx,
             )
+
+
+
+    # ------------- SLEEP HELPERS -------------
+    async def _pause_background_tasks(self):
+        for task in self.background_tasks:
+            if not task.done():
+                task.cancel()
+
+
+    async def _collect_pending_tasks(self):
+        if hasattr(self.tool_executor, "pending"):
+            return self.tool_executor.pending
+        return []
+
+
+    async def _collect_reflections(self):
+        if hasattr(self.episode_service, "pending_reflections"):
+            return self.episode_service.pending_reflections
+        return []
+
+
+    async def _save_conversation_summary(self):
+        return await self.conversation.summary()
+
+
+    async def _save_model_state(self):
+        return await self.self_model.export_state()
+    
+
+    async def _flush_learning(self):
+        print("[ORC] Flushing learning pipeline...")
+
+        for session_id in list(self.sessions):
+            try:
+                await self.episode_service.finalize_episode(session_id)
+
+            except Exception as e:
+                print(f"[ORC] Episode flush failed: {e}")
+
+
+    # ------------ WAKE HELPERS -------------
+    async def _restore_tasks(self, tasks):
+        for task in tasks:
+            await self.tool_executor.enqueue(task)
+
+
+    async def _restore_reflections(self, reflections):
+        for reflection in reflections:
+            await self.episode_service.resume(reflection)
+
+
+    async def _restore_model_state(self, state):
+        await self.self_model.import_state(state)
+
+
+    async def _resume_background_jobs(self):
+        await self.cache_service.refresh_boot()

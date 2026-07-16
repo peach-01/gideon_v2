@@ -14,7 +14,7 @@ class VectorMemoryService:
 
 
     async def store(self, memory_id: str, embedding: list[float], memory_type: str, source: str):
-        client.upsert(
+        result = client.upsert(
             collection_name=self.COLLECTION,
             points=[
                 PointStruct(
@@ -28,6 +28,8 @@ class VectorMemoryService:
                 ),
             ]
         )
+
+        print("[DEBUG][VECTOR] Stored QDRANT:", result)
 
     async def search(self, embedding: list[float], limit: int=10):
         results = client.query_points(

@@ -10,6 +10,8 @@ class ToolExecutor:
         self.memory = memory_service
         self.tool_router = ToolRouter(self.memory)
 
+        self.pending = []
+
     
     async def boot(self):
         print("[TOOL-EXECUTOR] Tools ready.")
@@ -19,6 +21,8 @@ class ToolExecutor:
         results = []
 
         for call in tool_calls:
+            self.pending.append(call)
+
             name = call.function.name
             args = json.loads(call.function.arguments or "{}")
 
@@ -32,4 +36,10 @@ class ToolExecutor:
                 "content": json.dumps(result, default=str),
             })
 
+            self.pending.remove(call)
+
         return results
+    
+    
+    async def enqueue(self, task):
+        self.pending.append(task)

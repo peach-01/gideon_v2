@@ -44,6 +44,8 @@ class MemoryService:
 
 
     async def store(self, content: str, provenance: Provenance | None = None, memory_type: str=MemoryType.FACT, source: str="user", importance: float=0.5, meta_data: dict | None = None):
+        print("[DEBUG][MEMORY] STORE REQUEST:", content[:100])
+
         db = SessionLocal()
 
         try:
@@ -105,6 +107,8 @@ class MemoryService:
 
             db.add(record)
             db.commit()
+
+            print("[DEBUG][MEMORY] Writing vector:", memory_id)
 
             await self.vector_service.store(
                 memory_id=memory_id, 

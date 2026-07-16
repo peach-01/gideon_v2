@@ -19,6 +19,7 @@ class EpisodeService:
 
         self.buffers = {}
         self.last_activity = {}
+        self.pending_reflections = {}
 
         self.active_jobs = set()
 
@@ -86,7 +87,8 @@ class EpisodeService:
         
         self.active_jobs.add(session_id)
         
-        asyncio.create_task(self._background_finalize(session_id))
+        task = asyncio.create_task(self._background_finalize(session_id))
+        self.pending_reflections[session_id] = task
 
 
     async def _background_finalize(self, session_id):
@@ -168,3 +170,22 @@ class EpisodeService:
         self.last_activity.pop(session_id, None)
 
         return episode_id
+    
+
+    async def export_pending_reflections(self):
+        return {
+            session_id:
+                self.buffers.get(session_id, [])
+
+            for session_id in self.pending_reflections
+        }
+
+
+    async def restore_reflections(self, reflections):
+        for session_id, events in reflections.items():
+            self.buffers[session_id] = events
+            self.last_activity[session_id] = datetime.now(UTC)
+
+
+    async def resume(self, reflection):
+        await self.restore_reflections(reflection)

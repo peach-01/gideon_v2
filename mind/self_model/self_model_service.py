@@ -27,3 +27,12 @@ class SelfModelService:
             experiences=experiences,
             preferences=preferences,
         )
+    
+
+    async def export_state(self):
+        model = await self.snapshot()
+        return model.__dict__
+
+
+    async def import_state(self, state):
+        self._snapshot = SelfModel(**state)
